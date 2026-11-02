@@ -1982,6 +1982,11 @@ function cpuHard(side,onlyId){const t0=performance.now();
      ・Chain        … クイーンが続けて動ける手は手番を渡さずに潜る
    時間は GM_MS で調整。長くするほど強くなる。                 */
 const GM_MS=1500, GM_MAXD=7, GM_QD=4;   /* GM_QD = 静止探索の深さ */
+let gmNodes=0, gmDepthDone=0, gmLastMs=0;   /* 診断用（__G.gmInfo で読める） */
+/* cpuGM が葉で使う評価。既定は evaluate() と同じ。
+   強い評価関数はここを差し替える（ベンチマークはこの印の位置に候補を注入する）。 */
+let gmEval=function(sd){return evaluate(sd);};
+/*__GM_EVAL_SLOT__*/
 const GM_STOP={};
 function gmOrder(list){
   const a=[];
@@ -2008,7 +2013,8 @@ function gmQuiet(sd,alpha,beta,t0,q){
   if(performance.now()-t0>GM_MS)throw GM_STOP;
   if(!kingOf(sd))return -1e6;
   if(!kingOf(foeOf(sd)))return 1e6;
-  let stand=evaluate(sd);
+  gmNodes++;
+  let stand=gmEval(sd);
   if(q<=0)return stand;
   if(stand>=beta)return stand;                 /* これ以上良くする必要がない */
   if(stand>alpha)alpha=stand;
@@ -2029,8 +2035,9 @@ function gmSearch(sd,depth,alpha,beta,t0){
   if(!kingOf(sd))return -1e6-depth;
   if(!kingOf(foeOf(sd)))return 1e6+depth;
   if(depth<=0)return gmQuiet(sd,alpha,beta,t0,GM_QD);
+  gmNodes++;
   const ms=gmOrder(allMoves(sd));
-  if(!ms.length)return evaluate(sd);
+  if(!ms.length)return gmEval(sd);
   let best=-1e9;
   for(const {p,m} of ms){
     if(m.recall&&kingOf(sd)&&kingOf(sd).hp>kingOf(sd).max*.4)continue;
@@ -2045,10 +2052,10 @@ function gmSearch(sd,depth,alpha,beta,t0){
     if(best>alpha)alpha=best;
     if(alpha>=beta)break;                        /* ここで刈る */
   }
-  return best===-1e9?evaluate(sd):best;
+  return best===-1e9?gmEval(sd):best;
 }
 function cpuGM(side,onlyId){
-  const t0=performance.now();
+  const t0=performance.now();gmNodes=0;gmDepthDone=0;
   const mine=allMoves(side,onlyId).filter(([p,m])=>!(m.recall&&kingOf(side)&&kingOf(side).hp>kingOf(side).max*.4));
   if(!mine.length)return null;
   for(const [p,m] of mine)if(m.attack&&m.attack.t==='K'&&m.attack.hp-m.dmg<=0)return [p,m];
@@ -2075,12 +2082,13 @@ function cpuGM(side,onlyId){
     if(scored.length){
       scored.sort((a,b)=>b.v-a.v);
       if(done||scored.length===order.length){     /* その深さを完走できた時だけ採用 */
-        best=[scored[0].p,scored[0].m];
+        best=[scored[0].p,scored[0].m];gmDepthDone=d;
         order=scored.map(x=>({p:x.p,m:x.m,s:x.v}));   /* 次の深さは良かった順に調べる */
       }
     }
     if(!done||performance.now()-t0>GM_MS)break;
   }
+  gmLastMs=Math.round(performance.now()-t0);
   return best;
 }
 function cpuNormal(side,onlyId){
@@ -4898,7 +4906,7 @@ setPos(list,side){for(const p of pieces)if(p.mesh)scene.remove(p.mesh);pieces.le
   go(fromSq,toSq,kind,roll){const p=__T.at(fromSq);const f='abcdefgh'.indexOf(toSq[0]),r=+toSq[1];let pool=kind==='skill'?skillMoves(p):movesOfT(p);if(kind==='fork'){const fm=forkMove(p);for(const h of fm.hits)h.roll=roll!=null?roll:h.dmax;return perform(p,fm,false);}
     const m=pool.find(x=>x.f===f&&x.r===r);if(!m)return 'nomove';if(m.attack)m.roll=roll!=null?roll:m.dmax;if(!m.tags)m.tags=tagsFor(p,m);return perform(p,m,false).then(()=>'ok');}};
 window.__RB={mkPiece};   /* ルールブックの iframe が実物の駒モデルを借りる */
-window.__G={diag:()=>({frameN,last:+last.toFixed(1),busy,turn:turnSide,over,tw:tweens.length,ts:timeScale,ff,chain:!!chain,q:techQ.length,live:chainS.live.length,tws:tweens.map(w=>({d:w.d,t:+w.t.toFixed(2),fn:String(w.fn).slice(0,90)}))}),pzCount:()=>PUZZLES.length,pzTag:()=>PUZZLES[pzIdx]&&PUZZLES[pzIdx].tag,startPuzzle:i=>startPuzzle(i),vo:()=>({loaded:Object.values(voBuf).filter(b=>b&&b!=='loading').length,cur:voCur&&{start:+voCur.start.toFixed(2),end:+voCur.end.toFixed(2),prio:voCur.prio},t:AC&&+AC.currentTime.toFixed(2)}),sd:()=>[stallN,sdStage],sim:(lw,lb,maxP)=>{const snap=pieces.map(q=>({q,f:q.f,r:q.r,hp:q.hp,alive:q.alive,t:q.t,max:q.max,bare:q.bare,walked:q.walked,moved:q.moved,bonus:q.bonus}));let side='w',n=0,res='draw';
+window.__G={diag:()=>({frameN,last:+last.toFixed(1),busy,turn:turnSide,over,tw:tweens.length,ts:timeScale,ff,chain:!!chain,q:techQ.length,live:chainS.live.length,tws:tweens.map(w=>({d:w.d,t:+w.t.toFixed(2),fn:String(w.fn).slice(0,90)}))}),pzCount:()=>PUZZLES.length,pzTag:()=>PUZZLES[pzIdx]&&PUZZLES[pzIdx].tag,startPuzzle:i=>startPuzzle(i),vo:()=>({loaded:Object.values(voBuf).filter(b=>b&&b!=='loading').length,cur:voCur&&{start:+voCur.start.toFixed(2),end:+voCur.end.toFixed(2),prio:voCur.prio},t:AC&&+AC.currentTime.toFixed(2)}),sd:()=>[stallN,sdStage],gmInfo:()=>({depth:gmDepthDone,nodes:gmNodes,ms:gmLastMs,maxd:GM_MAXD,budget:GM_MS}),sim:(lw,lb,maxP)=>{const snap=pieces.map(q=>({q,f:q.f,r:q.r,hp:q.hp,alive:q.alive,t:q.t,max:q.max,bare:q.bare,walked:q.walked,moved:q.moved,bonus:q.bonus}));let side='w',n=0,res='draw';
   while(n<maxP){cpuLevel=side==='w'?lw:lb;const c=cpuChoose(side);if(!c){res='nomove';break;}const [p0,m0]=c;if(m0.attack)m0.roll=rollDmg(m0);if(m0.fork)m0.hits.forEach(h=>h.roll=rollDmg(h));make(p0,m0,false);n++;if(!kingOf('w')){res='b';break;}if(!kingOf('b')){res='w';break;}side=side==='w'?'b':'w';}
   for(const s0 of snap)Object.assign(s0.q,{f:s0.f,r:s0.r,hp:s0.hp,alive:s0.alive,t:s0.t,max:s0.max,bare:s0.bare,walked:s0.walked,moved:s0.moved,bonus:s0.bonus});lastMove=null;lastMover={w:null,b:null};discBuff={w:null,b:null};cpuLevel='normal';return [res,n];},setLv:v=>{cpuLevel=v;},timeCpu:(side,n)=>{const out=[];for(const lv of ['easy','normal','hard']){cpuLevel=lv;const t=performance.now();const r=cpuChoose(side);out.push([lv,Math.round(performance.now()-t),r&&('abcdefgh'[r[0].f]+r[0].r+'>'+'abcdefgh'[r[1].f]+r[1].r)]);}cpuLevel='normal';return out;},barTest:(from,to)=>{const q=pieces.find(x=>x.alive);const b=hpBar(q);b.shown=from;b.lag=from;drawBar(b);b.shown=to;b.lag=to;drawBar(b);const out=[];const t0=performance.now();return new Promise(res=>{const iv=setInterval(()=>{drawBar(b);out.push(b.disp);if(performance.now()-t0>700){clearInterval(iv);scene.remove(b.spr);res(out);}},60);});},tapSq:sq=>uiTap({f:'abcdefgh'.indexOf(sq[0]),r:+sq[1]}),ui:()=>({sel:sel&&('abcdefgh'[sel.f]+sel.r),skill:uiSkill,pending:!!uiPending,runes:runeG.children.length}),tech:(n,s)=>showTech(n,s),aim(p,m){focus(p);openPad();setTimeout(()=>{choose(m);padInfo(m);},450);},set speed(v){dbgSpeed=v},pieces,get busy(){return busy},get over(){return over},get turn(){return turnSide},start,playerMove:(p,m)=>playerMove(p,m),movesOfT,cpuChoose,get sel(){return sel}};
 })();
