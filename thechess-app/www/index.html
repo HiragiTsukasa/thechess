@@ -419,6 +419,10 @@ body[data-picking] #title:not(.hide) ~ #hmBtn,body.pnl #title:not(.hide) ~ #hmBt
 .rkbar{position:relative;height:8px;border-radius:4px;background:#1d2127;overflow:hidden}
 .rkbar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;display:block;transition:width .4s}
 .rkend{display:flex;justify-content:space-between;font-size:9.5px;color:var(--sub);margin-top:-4px}
+/* 無料版で鍵がかかっている選択肢。隠さずグレーで見せる＝何が買えるのか分かる */
+.locked{opacity:.5;position:relative}
+.locked::after{content:"🔒";position:absolute;right:14px;top:50%;transform:translateY(-50%);
+ font-size:13px;filter:grayscale(1);opacity:.85}
 .livez{display:flex;align-items:center;gap:7px;font-size:10.5px;color:#8fe0b0;
  background:rgba(90,200,140,.07);border:1px solid rgba(90,200,140,.22);border-radius:10px;padding:7px 10px}
 .livez em{font-style:normal;color:var(--sub)}
@@ -1344,7 +1348,6 @@ requestAnimationFrame(loop);
   <div class="modes"><button class="big pri" type="button" id="again">もう一度</button><button class="big" type="button" id="toTitle">タイトルへ</button></div></div></div>
 <script src="lib/three.min.js"></script>
 <script src="lib/peerjs.min.js"></script>
-<script src="lib/firebase.js"></script>
 <script src="iap.js"></script>
 <button class="hmbtn" type="button" id="hmBtn" aria-label="メニュー">☰</button>
 <div class="screen hide ov" id="hmPanel"><div class="pnl">
@@ -1382,7 +1385,6 @@ requestAnimationFrame(loop);
   <div class="pt">対戦回数</div>
   <div class="sct">いまの状態<em id="byNow">—</em></div>
   <p class="note2" id="byNote">無料版は1日4回まで。足りなくなったら追加できます</p>
-  <button class="big" type="button" id="byP12"><span>12回 追加</span><em>¥320</em></button>
   <button class="big pri" type="button" id="byUnl"><span>無制限版</span><em>¥980</em></button>
   <button class="linkb" type="button" id="byClose">閉じる</button>
 </div></div>
@@ -2920,7 +2922,6 @@ function syncMeshes(){for(const p of pieces){if(p.mesh&&p.mesh.userData.t!==p.t)
 function endGame(winner,quick){
   if(mode==='puzzle'){over=true;busy=false;return puzzleEnd();}
   over=true;busy=false;if(mode==='online'&&!quick)finishOnline(winner);
-  if(mode==='cpu'&&!ranked&&!resigned&&winner&&winner!==humanSide)try{plRefund();}catch(e){}   /* 投了とランクでは返さない */
   const showRes=()=>{
     const t=winner==null?'引き分け'
       :byJudge?(mode!=='pvp'?(winner===humanSide?'判定勝ち':'判定負け'):(winner==='w'?'白の判定勝ち':'黒の判定勝ち'))
@@ -2946,9 +2947,10 @@ const start0=function(md){preloadPortraits();leaveOnline();mode=md;humanSide='w'
 function start(md){                                   /* 対CPUだけ回数を使う（部屋対戦・パズルは無制限） */
  resigned=false;
  if(md!=='cpu'||payFree){ranked=!!payFree;payFree=0;return start0(md);}
- ranked=false;askPlay(()=>start0(md));}
+ ranked=false;return start0(md);}            /* 回数制は廃止。やさしい以外は入口で鍵がかかる */
 document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{audio();start(b.dataset.mode);}));
 let leaveModes=()=>{};
+let lvLockRefresh=()=>{};   /* 3択の鍵表示を更新する。中身は下の3択ブロックで入る */
 {// 3択は位置を変えず、中の文字だけを差し替える（2段階）
   const B=[$('cpuBtn'),$('onlineBtn'),$('rbBtn')];let pick='';
   const HOME=['オフライン','オンライン','ルールブック'];
@@ -2956,13 +2958,22 @@ let leaveModes=()=>{};
   const ONM=[['mk','キーを作成'],['join','キーを入力'],['rank','ランクマッチ']];
   const swap=labels=>B.forEach((b,i)=>{b.classList.remove('swap');void b.offsetWidth;b.classList.add('swap');
     setTimeout(()=>{b.textContent=labels[i];},120);});
-  const leave=()=>{pick='';delete document.body.dataset.picking;swap(HOME);$('lvBack').style.visibility='hidden';};
+  const leave=()=>{pick='';delete document.body.dataset.picking;swap(HOME);$('lvBack').style.visibility='hidden';B.forEach(b=>b.classList.remove('locked'));};
   leaveModes=leave;
-  const enter=(k,labels)=>{pick=k;document.body.dataset.picking='1';swap(labels);$('lvBack').style.visibility='visible';};
+  const enter=(k,labels)=>{pick=k;document.body.dataset.picking='1';swap(labels);$('lvBack').style.visibility='visible';markLocks();};
+  /* 無料版は「やさしい」のみ。ふつう・つよい・ランクマッチは鍵付きで見せる
+     （隠さない。何が買えるのかが見えていないと買う動機にならない） */
+  const lockLv=i=>!paid()&&i>0;
+  const markLocks=()=>B.forEach((b,i)=>{
+    const lk=(pick==='lv'&&lockLv(i))||(pick==='on'&&ONM[i][0]==='rank'&&!paid());
+    b.classList.toggle('locked',!!lk);});
+  lvLockRefresh=markLocks;
   B.forEach((b,i)=>b.addEventListener('click',e=>{if(!pick)return;e.stopImmediatePropagation();audio();
-    if(pick==='lv'){cpuLevel=LV[i][0];start('cpu');setTimeout(leave,700);return;}
+    if(pick==='lv'){
+      if(lockLv(i)){openBuy();return;}                 /* 鍵 → 購入パネル */
+      cpuLevel=LV[i][0];start('cpu');setTimeout(leave,700);return;}
     const k=ONM[i][0];
-    if(k==='rank'){openRank();return;}   /* 3択を残したまま重ねる＝戻るで一つ前に帰る */
+    if(k==='rank'){if(!paid()){openBuy();return;}openRank();return;}   /* 3択を残したまま重ねる＝戻るで一つ前に帰る */
     if(!ON.mode){toast('通信を準備できませんでした');return;}
     leave();openLobby(k==='mk'?'mk':'join');
     if(k==='mk')setTimeout(()=>{const m=$('mkRoom');m&&m.click();},80);
@@ -3656,61 +3667,17 @@ function tierOf(rate){let i=Math.max(0,Math.min(RKN-1,Math.floor((rate-RKT.BASE)
  return {ri,ti:k+1,idx:i,lo:RKT.BASE+i*RKT.STEP,hi:RKT.BASE+(i+1)*RKT.STEP};}
 function rngOf(i){let k=i,ri=0;while(k>=RKEM.RANKS[ri].t){k-=RKEM.RANKS[ri].t;ri++;}
  return {ri,ti:k+1,lo:RKT.BASE+i*RKT.STEP,hi:RKT.BASE+(i+1)*RKT.STEP};}
-const PLAY_MAX=4;                      /* 無料ぶんの1日あたり回数。RKS より先に要る */
 /* 端末のローカル日付 YYYY-MM-DD。toISOString() はUTCなので、日本時間だと
    日付の変わり目が朝9時になってしまう（＝「本日の残り」が朝9時に戻る）。 */
 function localDay(d){const t=d||new Date();
  const p=n=>(n<10?'0':'')+n;
  return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate());}
-/* ══ Firebase ─ 対戦回数をサーバーで数える ═══════════════════
-   ・回数の正本はサーバー。クライアントは書かない（Firestoreルールで write 禁止）
-   ・日付の判定もサーバー時刻。端末の時計は見ない
-   ・オフラインでは無料ぶんだけ遊べる。繋がったら syncOfflinePlays で辻褄を合わせる
-   ・購入ぶんと無制限版はオンラインのときだけ反映される
-   apiKey は秘密ではない（クライアントに埋め込む前提の公開値）。守りはルール側。 */
-const FBCONF={
-  apiKey:"AIzaSyDvpl3Bdk7IKEg8HXVjkaUb2x4JiDqWwiA",
-  authDomain:"the-chess-33d12.firebaseapp.com",
-  projectId:"the-chess-33d12",
-  storageBucket:"the-chess-33d12.firebasestorage.app",
-  messagingSenderId:"4143924690",
-  appId:"1:4143924690:web:8ffe2c1206fffb7913b40b"
-};
-const NET=(()=>{
-  const S={ready:false,uid:null,fail:false,fn:null};
-  try{
-    if(!window.FB) {S.fail=true;return S;}
-    const app=FB.initializeApp(FBCONF);
-    const auth=FB.getAuth(app);
-    S.fn=FB.getFunctions(app,'asia-northeast1');
-    FB.onAuthStateChanged(auth,u=>{S.uid=u?u.uid:null;S.ready=!!u;if(u)plPull();});
-    FB.signInAnonymously(auth).catch(()=>{S.fail=true;});
-  }catch(e){S.fail=true;}
-  return S;})();
-/* callable 呼び出し。失敗（圏外・未デプロイ）は null を返してローカルに倒す */
-async function nfCall(name,data){
-  if(!NET.fn||!NET.ready)return null;
-  try{ const r=await FB.httpsCallable(NET.fn,name)(data||{}); return r&&r.data||null; }
-  catch(e){ return null; }
-}
-/* サーバーの残高をRKSへ写す（回数系だけ。レートや設定はローカルが正本） */
-function plApply(d){
-  if(!d)return false;
-  RKS.left=d.free;RKS.buy=d.buy;RKS.unlim=!!d.unlim;RKS.day=d.day;
-  try{localStorage.setItem('nc_rank',JSON.stringify(RKS));}catch(e){}
-  plLast='';plSync();return true;}
-/* 起動時・復帰時にサーバーと突き合わせる。オフラインで使ったぶんを先に送る */
-async function plPull(){
-  let off=0;try{off=parseInt(localStorage.getItem('nc_offplay')||'0',10)||0;}catch(e){}
-  if(off>0){ const d=await nfCall('syncOfflinePlays',{used:off});
-    if(d){try{localStorage.removeItem('nc_offplay');}catch(e){}return plApply(d);} }
-  return plApply(await nfCall('getPlays'));}
 const RKS=(()=>{let o={};try{o=JSON.parse(localStorage.getItem('nc_rank')||'{}');}catch(e){}
  const day=localDay();                  /* 端末のローカル日付。UTCで切ると日本時間の朝9時に戻ってしまう */
  if(!o.rate)o.rate=RKT.BASE;           /* 新規はレート1200＝Pawn Ⅰ から */
  if(!o.name)o.name='プレイヤー';
  if(!o.uid)o.uid='#'+(1000+Math.floor(Math.random()*9000))+'-'+Math.random().toString(36).slice(2,5).toUpperCase();
- if(o.day!==day){o.day=day;o.left=PLAY_MAX;}   /* 無料ぶんだけ日付で戻る */
+ if(o.day!==day)o.day=day;
  if(o.buy==null)o.buy=0;                /* 購入ぶんは繰り越す */
  if(o.se===undefined)o.se=true;if(o.vo===undefined)o.vo=true;
  return o;})();
@@ -3747,69 +3714,30 @@ function pClose(){                                   /* 閉じるときは縮み
  document.body.classList.remove('pnl');o.classList.add('out');
  clearTimeout(pClose._t);pClose._t=setTimeout(()=>pOpen(null),270);}
 
-/* ══ 対戦回数 ══════════════════════════════════ */
-/* PLAY_MAX は RKS より前（日付リセットで使う）へ移動した */
-const plFree=()=>RKS.left==null?PLAY_MAX:RKS.left;    /* 無料ぶん（日付で戻る） */
-const plBuy =()=>RKS.buy||0;                          /* 購入ぶん（繰り越す） */
-function plLeft(){return RKS.unlim?Infinity:plFree()+plBuy();}
-function plLabel(){                                   /* 「本日の残り 3 / 4」か「残り 15回」 */
- if(RKS.unlim)return '無制限';
- return plBuy()>0?('残り '+plLeft()+'回'):('本日の残り '+plFree()+' / '+PLAY_MAX);}
+/* ══ 課金 ══════════════════════════════════════
+   無料版は「オフライン やさしい」のみ。ふつう・つよい・ランクマッチが有料。
+   回数制はやめた（数えるものが無いので、端末の時計を戻したりアプリを
+   入れ直したりしても抜け道にならない）。非消耗型ひとつなので、復元も
+   Apple の restorePurchases() だけで足りる＝サーバーが要らない。 */
+const paid=()=>!!RKS.unlim;
+/* 旧・回数制の名残。プレミアム状態の表示だけに使う */
 let plLast='';
 function plSync(){
  const e=$('plPill');if(!e)return;
- const t=RKS.unlim?'U':plFree()+'/'+plBuy();
+ const t=paid()?'U':'F';
  if(t!==plLast){plLast=t;
-  e.innerHTML=RKS.unlim?'対戦 <b>無制限</b>'
-   :(plBuy()>0?'残り <b>'+plLeft()+'</b>回':'本日の残り <b>'+plFree()+'</b> / '+PLAY_MAX)+' <i>＋</i>';
-  e.classList.toggle('unl',!!RKS.unlim);
-  e.classList.toggle('few',!RKS.unlim&&plLeft()<=1);}
- }
-let lastSpend=null;                                   /* どちらの枠から引いたか（返すときに同じ枠へ戻す） */
-/* 対局開始時に1回ぶん引く。サーバーが正本で、圏外のときだけ無料ぶんをローカルで引く。
-   ローカルで引いたぶんは nc_offplay に積んで、次に繋がったとき申告する。 */
-function plSpend(){
- if(RKS.unlim)return;
- nfCall('spendPlay').then(d=>{
-  if(d){lastSpend=d.spent;plApply(d);return;}
-  /* ── ここから下はオフライン時のみ ── */
-  if(plFree()>0){
-   RKS.left=plFree()-1;lastSpend='free';
-   try{localStorage.setItem('nc_offplay',String((parseInt(localStorage.getItem('nc_offplay')||'0',10)||0)+1));}catch(e){}
-  }else if(plBuy()>0){
-   /* 購入ぶんはサーバーでしか減らせない。圏外では使わせない */
-   lastSpend=null;toast('購入ぶんの利用には通信が必要です');return;
-  }
-  rkSave();plLast='';plSync();});}
-/* キングのHPが0になって負けた時だけ返す */
-function plRefund(){
- if(RKS.unlim||!lastSpend)return;                     /* 引いていないのに増やさない */
- const was=lastSpend;lastSpend=null;
- nfCall('refundPlay').then(d=>{
-  if(d){plApply(d);toast('対戦回数が1回戻りました');return;}
-  /* オフライン：ローカルで戻せるのは無料ぶんだけ。
-     購入ぶんをここで足してもサーバーと突き合わせた時点で消えるので、足さずに次回へ回す。 */
-  if(was!=='free'){lastSpend=was;toast('通信が戻ったときに1回戻します');return;}
-  if(plFree()<PLAY_MAX)RKS.left=plFree()+1;
-  try{const n=(parseInt(localStorage.getItem('nc_offplay')||'0',10)||0)-1;
-   if(n>0)localStorage.setItem('nc_offplay',String(n));else localStorage.removeItem('nc_offplay');}catch(e){}
-  rkSave();plLast='';plSync();toast('対戦回数が1回戻りました');});}
-let payFree=0;                                        /* ランクマッチ側で二重に引かないための印 */
+  e.innerHTML=paid()?'<b>製品版</b>':'<b>全モードを開放</b> <i>›</i>';
+  e.classList.toggle('unl',paid());
+  e.classList.remove('few');}
+ lvLockRefresh();}
+let payFree=0;                                        /* ランクマッチ側の印 */
 let ranked=false,resigned=false;                      /* ランクマッチ中か／投了で終わったか */
-function askPlay(go){
- if(RKS.unlim){go();return;}
- if(plLeft()<=0){toast('本日の対戦回数を使い切りました');openBuy();return;}
- const n=plLeft();
- confirmPanel('対戦を始めますか',
-  '対戦回数を <b>1回</b> 使います。<br>残り '+n+' → <b>'+(n-1)+'</b><br>'
-  +'<span style="font-size:10px">キングのHPが0になって負けたときは戻ります。<br>投了・離脱では戻りません。</span>',
-  '始める',()=>{plSpend();go();});}
 function openBuy(){
- $('byNow').textContent=RKS.unlim?'無制限版':('本日ぶん '+plFree()+' / '+PLAY_MAX+(plBuy()>0?'　追加ぶん '+plBuy():''));
- $('byNote').textContent=RKS.unlim?'無制限版を購入済みです。回数の追加は要りません'
-  :'無料版は1日'+PLAY_MAX+'回まで。足りなくなったら追加できます';
- $('byUnl').style.display=RKS.unlim?'none':'';
- $('byP12').style.display=RKS.unlim?'none':'';
+ $('byNow').textContent=paid()?'製品版（購入済み）':'無料版';
+ $('byNote').textContent=paid()
+  ?'すべてのモードが開放されています'
+  :'無料版で遊べるのは「オフライン・やさしい」とパズル、部屋対戦です。製品版にすると、ふつう／つよい／ランクマッチが開放されます。';
+ $('byUnl').style.display=paid()?'none':'';
  pOpen('buyPanel');}
 /* 実際の課金は Apple IAP。ここはその呼び出し口で、Web では成立しない。
    ?dev を付けて開いたときだけ、動作確認のためその場で反映する。 */
@@ -3818,11 +3746,10 @@ function iapBuy(kind){
  const B=window.__IAP;
  if(B&&typeof B.buy==='function'){
   toast('購入手続きを開きます…');
-  try{B.buy(kind==='unl'?'unl':'p12');}catch(e){toast('購入できませんでした');}
+  try{B.buy();}catch(e){toast('購入できませんでした');}
   return;}
  if(!DEVBUY){toast('購入はアプリ版で有効になります');return;}
- if(kind==='unl'){RKS.unlim=true;}
- else{RKS.buy=plBuy()+12;}
+ RKS.unlim=true;
  rkSave();plLast='';plSync();
  toast(kind==='unl'?'無制限版になりました':'12回を追加しました');
  openBuy();}
@@ -3831,22 +3758,15 @@ function iapBuy(kind){
 /* ネイティブ（iap.js）から取引が届く受け口。
    数えるのはサーバー。ここでは足さない ─ 足すと「購入を復元」を押すたびに増える。
    o = {transactionId, unlim?, plays?}。transactionId があればそれを検証に回す。 */
+/* ネイティブ（iap.js）から購入／復元が届く受け口。
+   売り物は非消耗型ひとつなので、立てるフラグも一つ。何度来ても同じ結果になる。 */
 window.__IAP_APPLY=function(o){
  try{
   if(!o)return;
-  if(o.transactionId){
-   toast('購入を確認しています…');
-   nfCall('verifyPurchase',{transactionId:String(o.transactionId)}).then(d=>{
-    if(!d){toast('確認できませんでした。通信状況をご確認ください');return;}
-    plApply(d);
-    toast(d.productId&&d.productId.indexOf('unlimited')>=0?'無制限版が有効になりました':'対戦回数を追加しました');
-   });
-   return;
-  }
-  /* transactionId が無い場合（古い呼び出し／?dev）。サーバーには反映しない */
+  const was=paid();
   if(o.unlim)RKS.unlim=true;
-  if(o.plays)RKS.left=plFree();           /* 購入ぶんはサーバー管理なので触らない */
   rkSave();plLast='';plSync();
+  if(!was&&paid())toast('製品版が有効になりました');
  }catch(e){}};
 function iapRestore(){
  const B=window.__IAP;
@@ -3865,7 +3785,6 @@ $('hmTerms').addEventListener('click',()=>{audio();
  try{window.open(TERMS_URL,'_blank');}catch(e){toast('ページを開けませんでした');}});
 $('hmRestore').addEventListener('click',()=>{audio();iapRestore();});
 $('plPill').addEventListener('click',()=>{audio();openBuy();});
-$('byP12').addEventListener('click',()=>{audio();iapBuy('p12');});
 $('byUnl').addEventListener('click',()=>{audio();iapBuy('unl');});
 $('byClose').addEventListener('click',()=>{audio();pClose();});
 
@@ -4555,7 +4474,7 @@ uiSelect=function(p){uiSelectRaw2(p);
 
 /* ===== UI のタップ音（画面上のボタン全部に効く） ===== */
 const UI_BACK=new Set(['lvBack','hmClose','nmCancel','rkBack','ldBack','lobbyBack','waitCancel','rbClose','mTitle','byClose','cfNo','mPzBack']);
-const UI_OK  =new Set(['nmOk','rkGo','mkRoom','joinBtn','hmCopy','again','mRestart','mResign','cfOk','byP12','byUnl','mPzRetry','mPzNext','mAgain','mWin']);
+const UI_OK  =new Set(['nmOk','rkGo','mkRoom','joinBtn','hmCopy','again','mRestart','mResign','cfOk','byUnl','mPzRetry','mPzNext','mAgain','mWin']);
 const UI_TGL =new Set(['hmSe','hmVo']);
 const UI_OPEN=new Set(['hmBtn','menuBtn','rkLdr','tutQ','hmRename','rbBtn','plPill','mRule','mHelp','mPzHint','hmRestore']);
 document.addEventListener('click',e=>{
