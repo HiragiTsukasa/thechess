@@ -1938,13 +1938,15 @@ const PREV=new Map(); // where each piece stood before its previous move
 function repPen(p,m){const q=PREV.get(p.id);return q&&q.f===m.f&&q.r===m.r?.7:0;}
 function loneBonus(p,m){const side=p.side;if(pieces.some(q=>q.alive&&q.side===side&&q!==p))return 0;const d=Math.max(Math.abs(m.f-3.5),Math.abs(m.r-4.5));return (3.5-d)*.06;}
 let cpuLevel='normal';
-/* cpuGM（αβ＋反復深化＋静止探索）は書いてあるが、実測で cpuHard に勝てなかったため
-   メニューには割り当てていない。原因は探索の深さではなく evaluate() が材料とHPしか
-   見ていないこと。評価関数を強化するときの土台として 'gm' で呼べるようにしてある。 */
+/* 難易度の割り当て
+     やさしい easy   … cpuEasy（1手読み・ノイズあり・25%でランダム）
+     ふつう   normal … cpuHard（旧「つよい」。2手読み＋上位10手3手目＋定石加点）
+     つよい   hard   … cpuGM（αβ＋反復深化＋静止探索、評価関数 safety-v2。GM_MS まで考える）
+   cpuNormal（旧ふつう・2手読み）はメニューから外したが、__G.sim('legacy',…) で呼べる。 */
 function cpuChoose(side,onlyId){return cpuLevel==='easy'?cpuEasy(side,onlyId)
-  :cpuLevel==='gm'?cpuGM(side,onlyId)
-  :cpuLevel==='hard'?cpuHard(side,onlyId)
-  :cpuNormal(side,onlyId);}
+  :cpuLevel==='hard'||cpuLevel==='gm'?cpuGM(side,onlyId)
+  :cpuLevel==='legacy'?cpuNormal(side,onlyId)
+  :cpuHard(side,onlyId);}
 // easy: looks only one move ahead, is noisy, and now and then plays a random move
 function cpuEasy(side,onlyId){const mine=allMoves(side,onlyId).filter(([p,m])=>!(m.recall&&kingOf(side)&&kingOf(side).hp>kingOf(side).max*.4));
   for(const [p,m] of mine)if(m.attack&&m.attack.t==='K'&&m.attack.hp-m.dmg<=0)return [p,m];
@@ -1986,6 +1988,125 @@ let gmNodes=0, gmDepthDone=0, gmLastMs=0;   /* 診断用（__G.gmInfo で読め�
 /* cpuGM が葉で使う評価。既定は evaluate() と同じ。
    強い評価関数はここを差し替える（ベンチマークはこの印の位置に候補を注入する）。 */
 let gmEval=function(sd){return evaluate(sd);};
+/* ───────────────────────────────────────────────────────────────
+   採用した評価関数「safety-v2」。6つの角度（安全／攻撃／王中心／陣形／非線形HP／旧つよい移植）で
+   候補を作り、深さ3固定で cpuHard（旧つよい）と対戦させて選んだ。
+   safety-v2 の通算: 33勝7敗（82.5%）。評価関数を変えない場合は 11勝5敗。
+   ※ 下の gmX_ という接頭辞はこの実装が使っている。別の候補をベンチにかけるときは別の接頭辞を。
+   ─────────────────────────────────────────────────────────────── */
+/* safety-v2 ─ 安全重視: evaluate(sd) に自前の軽量脅威マップを内蔵する（v1 の改良）。
+   v1 からの変更（負け試合の棋譜から）:
+   ・ナイトは「1手で与える合計」で数える（直接攻撃 + 跳び越し Trample 60 + 着地 Landing 80）。
+     王の隣を跳び回るナイトは1手140、負け試合はほぼ全部これで王を削られていた。
+   ・Double Check: 王を狙う敵駒が2体以上いる間、敵は「どんな手でも」王に200を入れる。
+     探索（fast=true）はこれを一切見ないので評価で ±5 を付ける（自分の手番で相手王が二重に狙われていれば次の手で確定200）。
+   ・ナイトが倒して着地したときの Landing も数える。
+   ・王の危険度を非線形に: 「敵の1手あたり最大ダメージ ÷ 王の残HP」の2乗で増える減点。
+     1手で倒される王は、手番側でも大減点（跳び回りは静止探索に出てこない静かな手なので探索では見えない）。
+   脅威マップは grid を1回作って幾何だけで数える（allMoves/rawMoves は呼ばない）。 */
+const gmX_UP={P:90,N:70,B:85,R:85,Q:80,K:100};
+const gmX_RD=[[1,0],[-1,0],[0,1],[0,-1]];
+const gmX_BD=[[1,1],[1,-1],[-1,1],[-1,-1]];
+const gmX_QD=gmX_RD.concat(gmX_BD);
+const gmX_NJ=[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]];
+const gmX_KVO=2.5;            /* KING_VS_OTHERS と同じ値 */
+const gmX_LASER=(K_.CANNON[0]+K_.CANNON[1])/2;
+function gmX_grid(){const g=new Array(64);for(const p of pieces)if(p.alive)g[p.f*8+p.r-1]=p;return g;}
+function gmX_canSlide(t,df,dr){return t==='Q'||(t==='R'?(df===0||dr===0):(df!==0&&dr!==0));}
+/* defMul 相当（grid で） */
+function gmX_def(o,g){
+  if(o.t==='K')return o.bare?BARE.DEF:1;
+  if(o.t==='P'){let n=0;
+    if(o.f>0){const q=g[(o.f-1)*8+o.r-1];if(q&&q.side===o.side&&q.t==='P')n++;}
+    if(o.f<7){const q=g[(o.f+1)*8+o.r-1];if(q&&q.side===o.side&&q.t==='P')n++;}
+    return n?1-K_.PHALANX*n:1;}
+  if(o.t==='R'&&lastMover[o.side]!==o.id&&o.moved!==undefined)return K_.RAMPART;
+  return 1;}
+/* side の駒が foe の次の1手で受けうるダメージ。
+   out[id]={mx:1手あたり最大, sm:全手段の合計, n:手段数, nk:倒しきる手段数, na:rawMoves で直接狙う敵駒の数} */
+function gmX_threatMap(side,g,out){
+  const foe=side==='w'?'b':'w';
+  const kA=kingOf(foe);                 /* 攻撃側の王（Command） */
+  const cr=kA?commandRange(kA):0;
+  const sdm=sdMul();
+  const rec=(o,d,direct)=>{let e=out[o.id];if(!e)e=out[o.id]={mx:0,sm:0,n:0,nk:0,na:0};
+    if(d>e.mx)e.mx=d;e.sm+=d;e.n++;if(d>=o.hp)e.nk++;if(direct)e.na++;};
+  for(const e of pieces){
+    if(!e.alive||e.side!==foe)continue;
+    const t=e.t;
+    const base=gmX_UP[t]*(e.bare?BARE.POW:1)*sdm*(e.hp<=e.max*.25?K_.DESP:1)*((t==='P'&&e.hp<=e.max*.3)?(1+K_.LASTSTAND)/2:1);
+    let add=0,sub=0;
+    if(e.bonus)add+=e.bonus;
+    if(kA&&e!==kA&&cheb(kA,e)<=cr)add+=1;
+    if(discBuff[foe]===e.id)add+=1;
+    /* Dread（敵クイーン隣接）/ Bare King（覚醒王隣接）は力-1ずつ */
+    for(let df=-1;df<=1;df++)for(let dr=-1;dr<=1;dr++){if(!df&&!dr)continue;const f=e.f+df,r=e.r+dr;if(f<0||f>7||r<1||r>8)continue;
+      const q=g[f*8+r-1];if(q&&q.side===side&&(q.t==='Q'||(q.t==='K'&&q.bare)))sub++;}
+    const dmgOf=(o,units)=>Math.max(1,units+add-sub)*base*(t==='K'&&o.t!=='K'?gmX_KVO:1)*gmX_def(o,g);
+    if(t==='P'){const r=e.r+(foe==='w'?1:-1);if(r>=1&&r<=8){const w=Math.max(1,e.walked);
+      for(const df of [-1,1]){const f=e.f+df;if(f<0||f>7)continue;const o=g[f*8+r-1];if(o&&o.side===side)rec(o,dmgOf(o,w),true);}}
+      continue;}
+    if(t==='N'){const outp=isOutpost(e,e.f,e.r)?2:0;
+      for(const [df,dr] of gmX_NJ){const f=e.f+df,r=e.r+dr;if(f<0||f>7||r<1||r>8)continue;
+        const o=g[f*8+r-1];if(o&&o.side===foe)continue;      /* 味方が居る＝動けない */
+        /* この1手で各駒が受ける合計: 跳び越し Trample、直接攻撃、（空きマスなら）着地 Landing */
+        const hs=[],hd=[];let j=0;
+        const addH=(q,d)=>{const i=hs.indexOf(q);if(i<0){hs.push(q);hd.push(d);}else hd[i]+=d;};
+        const fs=Math.sign(df),rs=Math.sign(dr),ax=Math.abs(df),ay=Math.abs(dr);
+        for(let i=0;i<=ax;i++)for(let k=0;k<=ay;k++){if((!i&&!k)||(i===ax&&k===ay))continue;const q=g[(e.f+i*fs)*8+e.r+k*rs-1];
+          if(q){j=1;if(q.side===side&&!q.bare)addH(q,K_.TRAMPLE);}}
+        let land=!o;
+        if(o){const d=dmgOf(o,j+3+outp);addH(o,d);if(d>=o.hp)land=true;}   /* 倒せば着地する */
+        if(land){for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){if(!a&&!b)continue;const ff=f+a,rr=r+b;if(ff<0||ff>7||rr<1||rr>8)continue;
+            const q=g[ff*8+rr-1];if(q&&q.side===side&&!q.bare&&q!==o)addH(q,K_.LANDING);}}
+        for(let i=0;i<hs.length;i++)rec(hs[i],hd[i],hs[i]===o);}
+      continue;}
+    if(t==='K'){for(let df=-1;df<=1;df++)for(let dr=-1;dr<=1;dr++){if(!df&&!dr)continue;const f=e.f+df,r=e.r+dr;if(f<0||f>7||r<1||r>8)continue;
+        const o=g[f*8+r-1];if(o&&o.side===side)rec(o,dmgOf(o,1),true);}
+      continue;}
+    /* 長距離駒 */
+    const dirs=t==='R'?gmX_RD:t==='B'?gmX_BD:gmX_QD;
+    for(const [df,dr] of dirs){
+      let f=e.f+df,r=e.r+dr,n=1,o=null;
+      while(f>=0&&f<8&&r>=1&&r<=8){o=g[f*8+r-1];if(o)break;f+=df;r+=dr;n++;}
+      if(!o||o.side!==side)continue;
+      /* Battery: 真後ろに同方向へ動ける味方長距離駒 */
+      let bat=0,bf=e.f-df,br=e.r-dr;
+      while(bf>=0&&bf<8&&br>=1&&br<=8){const q=g[bf*8+br-1];if(q){if(q.side===foe&&SLIDER(q.t)&&gmX_canSlide(q.t,df,dr))bat=2;break;}bf-=df;br-=dr;}
+      rec(o,dmgOf(o,n+bat),true);
+      if(t==='R')rec(o,gmX_LASER*gmX_def(o,g)*sdm,false);   /* Laser（距離無関係・rawMoves には無いので na に数えない） */
+    }
+  }
+  return out;}
+/* 脅威の減点。toMove=true は手番側（1体は逃がせる）。戻り値は side 視点の「失うと見込む価値」 */
+function gmX_pen(side,map,toMove){
+  const L=[];let pen=0;
+  for(const o of pieces){if(!o.alive||o.side!==side)continue;const e=map[o.id];
+    if(o.t==='K'){
+      if(!e)continue;
+      const dbl=e.na>=2;                            /* 2体以上に狙われている＝相手のどの手でも +200 */
+      const M=Math.min(e.mx+(dbl?K_.DOUBLE:0),o.hp);
+      const d=M/o.hp;                               /* 相手の1手で失う残HPの割合 */
+      pen+=(M/UNIT*2.2)*(toMove?.5:.8);            /* 線形分 */
+      pen+=10*d*d*(toMove?.6:1);                    /* 非線形: 残HPが少ないほど急増 */
+      if(M>=o.hp||e.nk>0)pen+=toMove?(e.nk>=2?30:12):50;   /* 次の1手で王が死ぬ */
+      if(dbl)pen+=toMove?4:5;                       /* Double Check 状態 */
+    }else{
+      if(!e)continue;
+      const d=e.mx;const v=VALUE[o.t];
+      let l=v*.55*Math.min(d,o.hp)/o.max;
+      if(d>=o.hp)l+=v*.45+v*.12;                 /* 失う残り価値 + Spoils 相当 */
+      L.push(l);}}
+  L.sort((a,b)=>b-a);
+  if(toMove){if(L.length>0)pen+=.3*L[0];if(L.length>1)pen+=.75*L[1];for(let i=2;i<L.length;i++)pen+=.35*L[i];}
+  else{if(L.length>0)pen+=.35*L[0];for(let i=1;i<L.length;i++)pen+=.15*L[i];}
+  return pen;}
+gmEval=function(sd){
+  const g=gmX_grid();
+  const foe=sd==='w'?'b':'w';
+  const tm=gmX_threatMap(sd,g,{}),tf=gmX_threatMap(foe,g,{});
+  return evaluate(sd)-gmX_pen(sd,tm,true)+gmX_pen(foe,tf,false);
+};
 /*__GM_EVAL_SLOT__*/
 const GM_STOP={};
 function gmOrder(list){
@@ -4523,7 +4644,7 @@ async function rkStart(){
  pClose();$('title').classList.add('hide');      /* 盤を背後に出してから重ねる */
  let r='done';try{r=await VSFX.run(me,op,true,fem);}catch(e){}
  if(r==='cancel'){payFree=0;$('title').classList.remove('hide');openRank();return;}
- cpuLevel='normal';start('cpu');}   /* 対人マッチングが入るまでは『ふつう』のCPUが相手 */
+ cpuLevel='normal';start('cpu');}   /* 対人マッチングが入るまでは『ふつう』(=旧つよい) のCPUが相手 */
 
 
 /* ===== 初回チュートリアル：引いて離す を1回だけ実演 ===== */
