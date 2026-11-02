@@ -1,0 +1,5 @@
+# テスト用の一時ファイル
+shot-*.png
+node_modules/
+thechess-app/ios/
+thechess-app/node_modules/

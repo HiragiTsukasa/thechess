@@ -1,0 +1,23 @@
+{
+  "appId": "com.shuji.thechess",
+  "appName": "The Chess",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "backgroundColor": "#0b0c0e",
+    "limitsNavigationsToAppBoundDomains": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 600,
+      "backgroundColor": "#0b0c0e",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0b0c0e",
+      "overlaysWebView": true
+    }
+  }
+}
