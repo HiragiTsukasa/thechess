@@ -1938,7 +1938,13 @@ const PREV=new Map(); // where each piece stood before its previous move
 function repPen(p,m){const q=PREV.get(p.id);return q&&q.f===m.f&&q.r===m.r?.7:0;}
 function loneBonus(p,m){const side=p.side;if(pieces.some(q=>q.alive&&q.side===side&&q!==p))return 0;const d=Math.max(Math.abs(m.f-3.5),Math.abs(m.r-4.5));return (3.5-d)*.06;}
 let cpuLevel='normal';
-function cpuChoose(side,onlyId){return cpuLevel==='easy'?cpuEasy(side,onlyId):cpuLevel==='hard'?cpuHard(side,onlyId):cpuNormal(side,onlyId);}
+/* cpuGM（αβ＋反復深化＋静止探索）は書いてあるが、実測で cpuHard に勝てなかったため
+   メニューには割り当てていない。原因は探索の深さではなく evaluate() が材料とHPしか
+   見ていないこと。評価関数を強化するときの土台として 'gm' で呼べるようにしてある。 */
+function cpuChoose(side,onlyId){return cpuLevel==='easy'?cpuEasy(side,onlyId)
+  :cpuLevel==='gm'?cpuGM(side,onlyId)
+  :cpuLevel==='hard'?cpuHard(side,onlyId)
+  :cpuNormal(side,onlyId);}
 // easy: looks only one move ahead, is noisy, and now and then plays a random move
 function cpuEasy(side,onlyId){const mine=allMoves(side,onlyId).filter(([p,m])=>!(m.recall&&kingOf(side)&&kingOf(side).hp>kingOf(side).max*.4));
   for(const [p,m] of mine)if(m.attack&&m.attack.t==='K'&&m.attack.hp-m.dmg<=0)return [p,m];
@@ -1967,6 +1973,116 @@ function cpuHard(side,onlyId){const t0=performance.now();
     const safety=threatScore(side)*.3;unmake(u2);unmake(u);c.deep=bestF*.6+c.sc*.4+safety;}
   let best=null,bs=-1e9;for(const c of top){const v=(c.deep??c.sc)+Math.random()*.05;if(v>bs){bs=v;best=[c.p,c.m];}}
   return best||(scored[0]&&[scored[0].p,scored[0].m]);}
+/* ══ グランドマスター級 ══════════════════════════════════════
+   つよい（旧）が「2手読み＋上位10手だけ3手目」だったのに対し、
+   こちらは反復深化つきのαβ負値探索。手を良い順に並べてから刈るので、
+   同じ時間で倍以上の深さまで潜れる。
+     ・手の並べ替え … 王を倒す手 > 撃破 > ダメージ量 > Fork
+     ・反復深化     … 深さ2から順に深め、時間切れは直前の深さの答えを使う
+     ・Chain        … クイーンが続けて動ける手は手番を渡さずに潜る
+   時間は GM_MS で調整。長くするほど強くなる。                 */
+const GM_MS=1500, GM_MAXD=7, GM_QD=4;   /* GM_QD = 静止探索の深さ */
+const GM_STOP={};
+function gmOrder(list){
+  const a=[];
+  for(const [p,m] of list){
+    let s=0;
+    if(m.attack){
+      const d=m.dmg!=null?m.dmg:(m.dmax||0);
+      s+=d*.02;
+      if(m.attack.hp-d<=0)s+=40;                 /* 倒しきる手 */
+      if(m.attack.t==='K')s+=60;                 /* 王狙い */
+      s+=VALUE[m.attack.t]||0;
+    }
+    if(m.fork)s+=18;
+    if(m.promo)s+=12;
+    a.push({p,m,s});
+  }
+  a.sort((x,y)=>y.s-x.s);
+  return a;
+}
+/* 静止探索：殴り合いが途中の局面で静的評価すると実態とズレるので、
+   攻撃手が尽きるまで読み切ってから評価する。これを入れないと
+   「殴られる直前」を良い局面と誤認する。 */
+function gmQuiet(sd,alpha,beta,t0,q){
+  if(performance.now()-t0>GM_MS)throw GM_STOP;
+  if(!kingOf(sd))return -1e6;
+  if(!kingOf(foeOf(sd)))return 1e6;
+  let stand=evaluate(sd);
+  if(q<=0)return stand;
+  if(stand>=beta)return stand;                 /* これ以上良くする必要がない */
+  if(stand>alpha)alpha=stand;
+  const atk=gmOrder(allMoves(sd).filter(([p,m])=>m.attack||m.fork));
+  for(const {p,m} of atk){
+    const u=make(p,m,true);
+    let v;
+    try{ v=u.extra?gmQuiet(sd,alpha,beta,t0,q-1):-gmQuiet(foeOf(sd),-beta,-alpha,t0,q-1); }
+    finally{unmake(u);}
+    if(v>stand)stand=v;
+    if(stand>alpha)alpha=stand;
+    if(alpha>=beta)break;
+  }
+  return stand;
+}
+function gmSearch(sd,depth,alpha,beta,t0){
+  if(performance.now()-t0>GM_MS)throw GM_STOP;
+  if(!kingOf(sd))return -1e6-depth;
+  if(!kingOf(foeOf(sd)))return 1e6+depth;
+  if(depth<=0)return gmQuiet(sd,alpha,beta,t0,GM_QD);
+  const ms=gmOrder(allMoves(sd));
+  if(!ms.length)return evaluate(sd);
+  let best=-1e9;
+  for(const {p,m} of ms){
+    if(m.recall&&kingOf(sd)&&kingOf(sd).hp>kingOf(sd).max*.4)continue;
+    const u=make(p,m,true);
+    let v;
+    try{
+      /* Chain は同じ側がもう一度動けるので手番を渡さない */
+      v=u.extra?gmSearch(sd,depth-1,alpha,beta,t0)
+               :-gmSearch(foeOf(sd),depth-1,-beta,-alpha,t0);
+    }finally{unmake(u);}
+    if(v>best)best=v;
+    if(best>alpha)alpha=best;
+    if(alpha>=beta)break;                        /* ここで刈る */
+  }
+  return best===-1e9?evaluate(sd):best;
+}
+function cpuGM(side,onlyId){
+  const t0=performance.now();
+  const mine=allMoves(side,onlyId).filter(([p,m])=>!(m.recall&&kingOf(side)&&kingOf(side).hp>kingOf(side).max*.4));
+  if(!mine.length)return null;
+  for(const [p,m] of mine)if(m.attack&&m.attack.t==='K'&&m.attack.hp-m.dmg<=0)return [p,m];
+  let order=gmOrder(mine);
+  let best=[order[0].p,order[0].m];
+  for(let d=2;d<=GM_MAXD;d++){
+    const scored=[];
+    let done=true;
+    try{
+      let alpha=-1e9;
+      for(const {p,m} of order){
+        const u=make(p,m,false);
+        let v;
+        try{
+          const bonus=(u.ev.some(e=>e.kind==='pin'||e.kind==='double')?.4:0)+(u.disc2?.3:0);
+          v=(u.extra?gmSearch(side,d-1,alpha,1e9,t0)
+                    :-gmSearch(foeOf(side),d-1,-1e9,-alpha,t0))
+            +bonus-repPen(p,m)+loneBonus(p,m);
+        }finally{unmake(u);}
+        scored.push({p,m,v});
+        if(v>alpha)alpha=v;
+      }
+    }catch(e){ if(e!==GM_STOP)throw e; done=false; }
+    if(scored.length){
+      scored.sort((a,b)=>b.v-a.v);
+      if(done||scored.length===order.length){     /* その深さを完走できた時だけ採用 */
+        best=[scored[0].p,scored[0].m];
+        order=scored.map(x=>({p:x.p,m:x.m,s:x.v}));   /* 次の深さは良かった順に調べる */
+      }
+    }
+    if(!done||performance.now()-t0>GM_MS)break;
+  }
+  return best;
+}
 function cpuNormal(side,onlyId){
   const mine=allMoves(side,onlyId);let best=null,bs=-1e9;
   for(const [p,m] of mine){
@@ -4331,6 +4447,23 @@ function fillRank(){const T=tierOf(RKS.rate),R=RKEM.RANKS[T.ri];fillLive();
 function openRank(){fillRank();}
 function closeRank(){pClose();}
 
+/* ══ ランクマッチの相手の表示名 ═══════════════════════════
+   対人マッチングが入るまでの仮の相手。CPU とだけ出ると味気ないので
+   それらしい名前を振る。実在の人物を指さないよう、語の組み合わせで作る。 */
+const RKN_A=['白','黒','銀','紅','蒼','翠','金','月','霜','雷','灰','紫'];
+const RKN_B=['の','・'];
+const RKN_C=['騎士','塔','司教','女王','歩兵','王','刃','影','鐘','旅人','賢者','狼'];
+const RKN_E=['Alder','Brent','Caldis','Doran','Ewan','Fenn','Garin','Halle','Iveth','Joren',
+             'Kestrel','Lyra','Moran','Nyle','Orin','Perrin','Quill','Rowan','Sable','Thorne',
+             'Ulric','Vance','Wren','Yarrow','Zel'];
+const RKN_S=['','','','7','12','21','33','64','88','99','_x','___'];
+function rkOpName(){
+ const r=Math.random();
+ if(r<.45)return RKN_A[(Math.random()*RKN_A.length)|0]+RKN_B[(Math.random()*RKN_B.length)|0]+RKN_C[(Math.random()*RKN_C.length)|0];
+ if(r<.9) return RKN_E[(Math.random()*RKN_E.length)|0]+RKN_S[(Math.random()*RKN_S.length)|0];
+ return RKN_C[(Math.random()*RKN_C.length)|0]+RKN_S[(Math.random()*RKN_S.length)|0];
+}
+
 /* リーダーボード */
 function buildLdr(){const me=tierOf(RKS.rate);
  const rows=[];
@@ -4374,7 +4507,7 @@ async function rkStart(){
  const d=(Math.random()<.5?-1:1)*(20+Math.floor(Math.random()*90));
  const or_=Math.max(RKT.BASE,RKS.rate+d),ot=tierOf(or_);
  const me={name:RKS.name||'プレイヤー',ri:t.ri,ti:t.ti,rate:RKS.rate,side:'白'};
- const op={name:'CPU',ri:ot.ri,ti:ot.ti,rate:or_,side:'黒'};
+ const op={name:rkOpName(),ri:ot.ri,ti:ot.ti,rate:or_,side:'黒'};
  rkOpRate=or_;   /* レート計算で使う */
  const fem=$('rkPanel').classList.contains('hide')?null:$('rkEm');   /* パネルが出ている時だけ飛ばす */
  leaveModes();          /* 対局に入るのでタイトルの3択は畳む */
@@ -4382,7 +4515,7 @@ async function rkStart(){
  pClose();$('title').classList.add('hide');      /* 盤を背後に出してから重ねる */
  let r='done';try{r=await VSFX.run(me,op,true,fem);}catch(e){}
  if(r==='cancel'){payFree=0;$('title').classList.remove('hide');openRank();return;}
- cpuLevel='hard';start('cpu');}
+ cpuLevel='normal';start('cpu');}   /* 対人マッチングが入るまでは『ふつう』のCPUが相手 */
 
 
 /* ===== 初回チュートリアル：引いて離す を1回だけ実演 ===== */
