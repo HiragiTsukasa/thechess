@@ -34,19 +34,12 @@
     store.when()
       .approved(function(tr){ tr.verify(); })
       .verified(function(receipt){
+        /* 数えるのは Firebase 側。ここは取引IDを渡すだけ。
+           二重付与は purchases/{originalTransactionId} で止めている。 */
         try{
           (receipt.sourceReceipt.transactions||[]).forEach(function(t){
-            (t.products||[]).forEach(function(p){
-              if(p.id===UNLIM){
-                /* 非消耗型は冪等なので毎回入れてよい */
-                window.__IAP_APPLY({unlim:true});
-              }
-              if(p.id===PLAYS){
-                /* 消耗型は一度だけ。transactionId が無い実装では弾く */
-                var key=t.transactionId;
-                if(key && isNew(key)){ markSeen(key); window.__IAP_APPLY({plays:12}); }
-              }
-            });
+            var ours=(t.products||[]).some(function(p){ return p.id===UNLIM||p.id===PLAYS; });
+            if(ours && t.transactionId) window.__IAP_APPLY({transactionId:t.transactionId});
           });
         }catch(e){}
         receipt.finish();

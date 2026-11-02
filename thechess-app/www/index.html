@@ -1344,6 +1344,7 @@ requestAnimationFrame(loop);
   <div class="modes"><button class="big pri" type="button" id="again">もう一度</button><button class="big" type="button" id="toTitle">タイトルへ</button></div></div></div>
 <script src="lib/three.min.js"></script>
 <script src="lib/peerjs.min.js"></script>
+<script src="lib/firebase.js"></script>
 <script src="iap.js"></script>
 <button class="hmbtn" type="button" id="hmBtn" aria-label="メニュー">☰</button>
 <div class="screen hide ov" id="hmPanel"><div class="pnl">
@@ -3661,6 +3662,49 @@ const PLAY_MAX=4;                      /* 無料ぶんの1日あたり回数。R
 function localDay(d){const t=d||new Date();
  const p=n=>(n<10?'0':'')+n;
  return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate());}
+/* ══ Firebase ─ 対戦回数をサーバーで数える ═══════════════════
+   ・回数の正本はサーバー。クライアントは書かない（Firestoreルールで write 禁止）
+   ・日付の判定もサーバー時刻。端末の時計は見ない
+   ・オフラインでは無料ぶんだけ遊べる。繋がったら syncOfflinePlays で辻褄を合わせる
+   ・購入ぶんと無制限版はオンラインのときだけ反映される
+   apiKey は秘密ではない（クライアントに埋め込む前提の公開値）。守りはルール側。 */
+const FBCONF={
+  apiKey:"AIzaSyDvpl3Bdk7IKEg8HXVjkaUb2x4JiDqWwiA",
+  authDomain:"the-chess-33d12.firebaseapp.com",
+  projectId:"the-chess-33d12",
+  storageBucket:"the-chess-33d12.firebasestorage.app",
+  messagingSenderId:"4143924690",
+  appId:"1:4143924690:web:8ffe2c1206fffb7913b40b"
+};
+const NET=(()=>{
+  const S={ready:false,uid:null,fail:false,fn:null};
+  try{
+    if(!window.FB) {S.fail=true;return S;}
+    const app=FB.initializeApp(FBCONF);
+    const auth=FB.getAuth(app);
+    S.fn=FB.getFunctions(app,'asia-northeast1');
+    FB.onAuthStateChanged(auth,u=>{S.uid=u?u.uid:null;S.ready=!!u;if(u)plPull();});
+    FB.signInAnonymously(auth).catch(()=>{S.fail=true;});
+  }catch(e){S.fail=true;}
+  return S;})();
+/* callable 呼び出し。失敗（圏外・未デプロイ）は null を返してローカルに倒す */
+async function nfCall(name,data){
+  if(!NET.fn||!NET.ready)return null;
+  try{ const r=await FB.httpsCallable(NET.fn,name)(data||{}); return r&&r.data||null; }
+  catch(e){ return null; }
+}
+/* サーバーの残高をRKSへ写す（回数系だけ。レートや設定はローカルが正本） */
+function plApply(d){
+  if(!d)return false;
+  RKS.left=d.free;RKS.buy=d.buy;RKS.unlim=!!d.unlim;RKS.day=d.day;
+  try{localStorage.setItem('nc_rank',JSON.stringify(RKS));}catch(e){}
+  plLast='';plSync();return true;}
+/* 起動時・復帰時にサーバーと突き合わせる。オフラインで使ったぶんを先に送る */
+async function plPull(){
+  let off=0;try{off=parseInt(localStorage.getItem('nc_offplay')||'0',10)||0;}catch(e){}
+  if(off>0){ const d=await nfCall('syncOfflinePlays',{used:off});
+    if(d){try{localStorage.removeItem('nc_offplay');}catch(e){}return plApply(d);} }
+  return plApply(await nfCall('getPlays'));}
 const RKS=(()=>{let o={};try{o=JSON.parse(localStorage.getItem('nc_rank')||'{}');}catch(e){}
  const day=localDay();                  /* 端末のローカル日付。UTCで切ると日本時間の朝9時に戻ってしまう */
  if(!o.rate)o.rate=RKT.BASE;           /* 新規はレート1200＝Pawn Ⅰ から */
@@ -3722,18 +3766,34 @@ function plSync(){
   e.classList.toggle('few',!RKS.unlim&&plLeft()<=1);}
  }
 let lastSpend=null;                                   /* どちらの枠から引いたか（返すときに同じ枠へ戻す） */
-function plSpend(){                                   /* 対局開始時に1回ぶん引く（無料ぶんから先に） */
+/* 対局開始時に1回ぶん引く。サーバーが正本で、圏外のときだけ無料ぶんをローカルで引く。
+   ローカルで引いたぶんは nc_offplay に積んで、次に繋がったとき申告する。 */
+function plSpend(){
  if(RKS.unlim)return;
- if(plFree()>0){RKS.left=plFree()-1;lastSpend='free';}
- else if(plBuy()>0){RKS.buy=plBuy()-1;lastSpend='buy';}
- rkSave();plLast='';plSync();}
-function plRefund(){                                  /* キングのHPが0になって負けた時だけ返す */
+ nfCall('spendPlay').then(d=>{
+  if(d){lastSpend=d.spent;plApply(d);return;}
+  /* ── ここから下はオフライン時のみ ── */
+  if(plFree()>0){
+   RKS.left=plFree()-1;lastSpend='free';
+   try{localStorage.setItem('nc_offplay',String((parseInt(localStorage.getItem('nc_offplay')||'0',10)||0)+1));}catch(e){}
+  }else if(plBuy()>0){
+   /* 購入ぶんはサーバーでしか減らせない。圏外では使わせない */
+   lastSpend=null;toast('購入ぶんの利用には通信が必要です');return;
+  }
+  rkSave();plLast='';plSync();});}
+/* キングのHPが0になって負けた時だけ返す */
+function plRefund(){
  if(RKS.unlim||!lastSpend)return;                     /* 引いていないのに増やさない */
- if(lastSpend==='buy')RKS.buy=plBuy()+1;
- else if(plFree()<PLAY_MAX)RKS.left=plFree()+1;
- else RKS.buy=plBuy()+1;
- lastSpend=null;
- rkSave();plLast='';plSync();toast('対戦回数が1回戻りました');}
+ const was=lastSpend;lastSpend=null;
+ nfCall('refundPlay').then(d=>{
+  if(d){plApply(d);toast('対戦回数が1回戻りました');return;}
+  /* オフライン：ローカルで戻せるのは無料ぶんだけ。
+     購入ぶんをここで足してもサーバーと突き合わせた時点で消えるので、足さずに次回へ回す。 */
+  if(was!=='free'){lastSpend=was;toast('通信が戻ったときに1回戻します');return;}
+  if(plFree()<PLAY_MAX)RKS.left=plFree()+1;
+  try{const n=(parseInt(localStorage.getItem('nc_offplay')||'0',10)||0)-1;
+   if(n>0)localStorage.setItem('nc_offplay',String(n));else localStorage.removeItem('nc_offplay');}catch(e){}
+  rkSave();plLast='';plSync();toast('対戦回数が1回戻りました');});}
 let payFree=0;                                        /* ランクマッチ側で二重に引かないための印 */
 let ranked=false,resigned=false;                      /* ランクマッチ中か／投了で終わったか */
 function askPlay(go){
@@ -3768,13 +3828,25 @@ function iapBuy(kind){
  openBuy();}
 /* ネイティブ側（Apple IAP）から結果を流し込む受け口。
    復元も購入も、最後はここを通して残高へ反映する。 */
+/* ネイティブ（iap.js）から取引が届く受け口。
+   数えるのはサーバー。ここでは足さない ─ 足すと「購入を復元」を押すたびに増える。
+   o = {transactionId, unlim?, plays?}。transactionId があればそれを検証に回す。 */
 window.__IAP_APPLY=function(o){
  try{
   if(!o)return;
+  if(o.transactionId){
+   toast('購入を確認しています…');
+   nfCall('verifyPurchase',{transactionId:String(o.transactionId)}).then(d=>{
+    if(!d){toast('確認できませんでした。通信状況をご確認ください');return;}
+    plApply(d);
+    toast(d.productId&&d.productId.indexOf('unlimited')>=0?'無制限版が有効になりました':'対戦回数を追加しました');
+   });
+   return;
+  }
+  /* transactionId が無い場合（古い呼び出し／?dev）。サーバーには反映しない */
   if(o.unlim)RKS.unlim=true;
-  if(o.plays)RKS.buy=plBuy()+(o.plays|0);
+  if(o.plays)RKS.left=plFree();           /* 購入ぶんはサーバー管理なので触らない */
   rkSave();plLast='';plSync();
-  toast(o.unlim?'無制限版を復元しました':'対戦回数を復元しました');
  }catch(e){}};
 function iapRestore(){
  const B=window.__IAP;

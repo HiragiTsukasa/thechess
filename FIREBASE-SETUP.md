@@ -62,9 +62,11 @@ firebase deploy --only firestore:rules,functions
 
 ---
 
-## D. ゲーム側（ここは私がやります）
+## D. ゲーム側 ─ ✅ 対応済み
 
-`firebaseConfig` をもらえれば、以下を差し替えます。差し替え箇所は5つだけ。
+プロジェクト `the-chess-33d12` の `firebaseConfig` を埋め込み、下の5か所を差し替え済みです。
+SDK は `www/lib/firebase.js`（Auth＋Functions のみ、147KB）として**同梱済み**なので、
+あなたのMacでのビルドは不要です。
 
 | 場所 | いま | 後 |
 |---|---|---|
@@ -74,7 +76,15 @@ firebase deploy --only firestore:rules,functions
 | `plRefund()` | ローカルで1戻す | `refundPlay()` |
 | `__IAP_APPLY` | `RKS.buy += 12` | `verifyPurchase(transactionId)`。**クライアントでは足さない** |
 
-`www/iap.js` も、回数を自分で数えるのをやめて取引IDを渡すだけにします。
+`www/iap.js` も、回数を自分で数えるのをやめ、`__IAP_APPLY({transactionId})` を渡すだけにしました。
+
+### 動作確認（Firebase 未設定の状態で）
+
+- 起動OK。対局開始で `本日の残り 4/4 → 3/4`、`nc_offplay=1` が積まれる＝**オフライン経路が機能**
+- 8手指して例外0／パズル25問OK／CPU対CPU 60戦で例外0
+- コンソールに `CONFIGURATION_NOT_FOUND` が出る
+  → **匿名認証がまだ有効化されていないため**（手順 A-3）。有効化すれば消えます。
+     繋がらない間はローカルに倒れるので、ゲームは普通に遊べます
 
 ---
 
