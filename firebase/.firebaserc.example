@@ -1,0 +1,5 @@
+{
+  "projects": {
+    "default": "ここに Firebase のプロジェクトID（例: thechess-1a2b3）"
+  }
+}

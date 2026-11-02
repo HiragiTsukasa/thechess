@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* 自分の記録だけ読める。書き込みはクライアントから一切させない。
+       （Functions は Admin SDK なのでこのルールを迂回して書ける）
+       ここを allow write にすると、Firestore を直接叩いて対戦回数を
+       増やせてしまい、localStorage の穴がクラウドに移るだけになる。 */
+    match /players/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    /* 処理済みのレシート。クライアントからは触らせない */
+    match /purchases/{originalTransactionId} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
