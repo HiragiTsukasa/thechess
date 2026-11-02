@@ -2772,7 +2772,7 @@ function continueChain(q){
 const ST={p:new Map(),sk:new Map(),big:{dmg:0,by:null,on:null},mate:'',lastTags:new Set()};
 function stP(q){if(!ST.p.has(q.id))ST.p.set(q.id,{q,k:0,dmg:0,tk:0,dist:0,over:0,sk:new Set()});return ST.p.get(q.id);}
 function stSk(name,dmg,heal){if(!name)return;const o=ST.sk.get(name)||{c:0,dmg:0,heal:0};o.c++;o.dmg+=dmg||0;o.heal+=heal||0;ST.sk.set(name,o);}
-function resetStats(){PREV.clear();ST.lastTags=new Set();ST.p.clear();ST.sk.clear();ST.big={dmg:0,by:null,on:null};ST.mate='';}
+function resetStats(){PREV.clear();ST.lastTags=new Set();ST.p.clear();ST.sk.clear();ST.big={dmg:0,by:null,on:null};ST.mate='';byJudge=false;}
 const EV_SKILL={fork:'Fork',cannon:'Laser',prayer:'Sanctuary',spoils:'Spoils',ascension:'Ascension',landing:'Tempest',trample:'Stampede',skewer:'Skewer',pin:'Pin',double:'Double Check',counter:'Bare King',bare:'Bare King',bareheal:'Bare King',suddendeath:'Sudden Death',recall:'Homecoming'};
 function recordStats(p,m,u){if(!u)return;
   ST.lastTags=new Set(m.tags||[]);for(const md of (m.mods||[]))ST.lastTags.add(md[0]);
@@ -2873,10 +2873,18 @@ $('pzBack').addEventListener('click',()=>{$('pzDone').classList.remove('on');$('
 window.addEventListener('message',e=>{const d=e.data;if(!d||typeof d!=='object')return;
   if(d.type==='puzzle'){audio();startPuzzle(d.id|0);}
   if(d.type==='closeRulebook')rbHide(1);});
+/* ══ 手数上限と判定決着 ══════════════════════════
+   サドンデスは「ダメージの出ない手」でしか上がらないうえ +200% で頭打ちになるので、
+   駒が互いに届かない終盤では永久に決着しない。上限を置いて残HP合計で決める。 */
+const TURN_CAP=150;                      /* これを超えたら判定 */
+const hpSum=sd=>pieces.filter(q=>q.alive&&q.side===sd).reduce((a,q)=>a+q.hp,0);
+function judgeWinner(){const w=hpSum('w'),b=hpSum('b');return w===b?null:(w>b?'w':'b');}
+let byJudge=false;                       /* 判定で終わったか（リザルトの文言用） */
 function nextTurn(){
   if(mode==='puzzle'){sel=null;chain=null;return puzzleEnd();}
   turnSide=foeOf(turnSide);if(turnSide==='w')turnNo++;
   sel=null;chain=null;
+  if(turnNo>TURN_CAP){byJudge=true;return endGame(judgeWinner());}   /* quickは渡さない（online時に finishOnline が飛ぶため） */
   if(!allMoves(turnSide).length){return endGame(null);}
   if(mode==='cpu'&&turnSide!==humanSide){banner('相手の手番',true);renderRoster(true);busy=true;
     setTimeout(async()=>{const c=cpuChoose(turnSide);        /* 指せる手が拾えなければ決着扱い（落とさない） */
@@ -2913,13 +2921,19 @@ function endGame(winner,quick){
   over=true;busy=false;if(mode==='online'&&!quick)finishOnline(winner);
   if(mode==='cpu'&&!ranked&&!resigned&&winner&&winner!==humanSide)try{plRefund();}catch(e){}   /* 投了とランクでは返さない */
   const showRes=()=>{
-    const t=winner==null?'引き分け':mode!=='pvp'?(winner===humanSide?'勝利':'敗北'):(winner==='w'?'白の勝利':'黒の勝利');
-    $('resT').textContent=t;$('resS').textContent=`${turnNo}手目で決着${ST.mate?' ・ '+ST.mate:''}`;buildResult(winner);$('result').classList.add('on');$('result').scrollTop=0;};
+    const t=winner==null?'引き分け'
+      :byJudge?(mode!=='pvp'?(winner===humanSide?'判定勝ち':'判定負け'):(winner==='w'?'白の判定勝ち':'黒の判定勝ち'))
+      :mode!=='pvp'?(winner===humanSide?'勝利':'敗北'):(winner==='w'?'白の勝利':'黒の勝利');
+    $('resT').textContent=t;
+    $('resS').textContent=byJudge
+      ? `${TURN_CAP}手で時間切れ ・ 残HPの多い方の勝ち`
+      : `${turnNo}手目で決着${ST.mate?' ・ '+ST.mate:''}`;
+    buildResult(winner);$('result').classList.add('on');$('result').scrollTop=0;};
   setTimeout(()=>{
     showRes();
     if(ranked&&winner!=null)                      /* 戦績の上にレート増減を重ねる */
       setTimeout(()=>{try{rkResult(winner===humanSide);}catch(e){}},420);
-  },winner&&!quick?3200:600);
+  },winner&&!quick&&!byJudge?3200:600);           /* 判定は撃破演出が無いので待たせない */
 }
 const start0=function(md){preloadPortraits();leaveOnline();mode=md;humanSide='w';setup();$('result').classList.remove('on');$('pzBar').classList.remove('on');$('pzDone').classList.remove('on');
   const t=$('title');
@@ -3773,7 +3787,7 @@ function iapRestore(){
 /* ══ 利用規約・プライバシーポリシー ══════════════
    ★ここに公開したページのURLを入れること。審査で必須。
      App Store Connect のプライバシーポリシーURL欄にも同じものを登録する。 */
-const TERMS_URL='';     /* 例: 'https://example.com/thechess/privacy' */
+const TERMS_URL='https://thechess-privacy.netlify.app/';
 $('hmTerms').addEventListener('click',()=>{audio();
  if(!TERMS_URL){toast('準備中です');return;}
  try{window.open(TERMS_URL,'_blank');}catch(e){toast('ページを開けませんでした');}});

@@ -1,0 +1,11 @@
+# プライバシーポリシーのページだけを公開する。
+# ここを privacy に固定しておかないと、リポジトリ全体（thechess-app/www/index.html =
+# ゲーム本体のソース）がそのまま公開されてしまう。
+[build]
+  publish = "privacy"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
