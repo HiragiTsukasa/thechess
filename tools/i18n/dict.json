@@ -681,7 +681,6 @@
  "発生": "Trigger",
  "盤面": "Board",
  "盤面全体を見る": "See the whole board",
- "相手が「キーを入力」からこのキーを入れると始まります。": "The match starts when your opponent enters this key from Enter key.",
  "相手のキングのHPを0にする": "Bring the enemy king's HP to zero",
  "続きから": "Resume",
  "膠着（Sudden Death）": "Stalemate (Sudden Death)",
@@ -700,5 +699,6 @@
  "駒にはそれぞれHPがある。チェックされても負けにはならない。": "Every piece has its own HP. Being checked is not a loss.",
  "駒の威力": "Piece power",
  "駒をタップ → 行き先をタップ": "Tap a piece → tap where it goes",
- "BGMを追加。場面ごとに4曲が切り替わる。メニューでオンオフ": "Added music: four tracks that follow the scene, switchable from the menu"
+ "BGMを追加。場面ごとに4曲が切り替わる。メニューでオンオフ": "Added music: four tracks that follow the scene, switchable from the menu",
+ "このキーを相手に伝えてください。相手が「キーを入力」から入れると対局が始まります。": "Give this key to the other player. The game starts when they enter it under Enter a key."
 }

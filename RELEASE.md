@@ -117,7 +117,8 @@ Sandbox アカウントで購入を試すこと。
 
 ```bash
 cd tools/i18n
-node check.js      # 未訳があれば終了コード1
+node check.js          # 未訳があれば終了コード1
+node sync.js --write   # 辞書を本体の TRX へ流し込む。ここまでやらないと英語にならない
 ```
 
 Capacitor への反映は `npm run sync`。`ios/` の設定は保持される（確認済み）。
