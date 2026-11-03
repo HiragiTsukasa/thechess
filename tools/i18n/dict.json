@@ -94,7 +94,6 @@
  "レーザー": "Laser",
  "レート ": "Rating ",
  "ロイヤルフォーク": "Royal Fork",
- "上位100人": "Top 100",
  "上限 ×1.5": "Max ×1.5",
  "上限×1.5": "Max ×1.5",
  "与ダメージ ": "Damage dealt ",
@@ -695,5 +694,19 @@
  "その部屋には入れません": "You cannot join that room",
  "直つなぎが切れました。郵便受けに切り替えます": "Direct link lost; switching to relay",
  "接続：直つなぎ": "Link: direct",
- "接続：郵便受け": "Link: relay"
+ "接続：郵便受け": "Link: relay",
+ "引き継ぎ": "Transfer",
+ "機種を変えるときは、このコードを控えてください。新しい端末で入れると、レートと表示名が移ります。": "Write this code down before changing devices. Entering it on a new device moves your rating and name across.",
+ "このコード": "Your code",
+ "このコードを知っている人は、あなたの記録を引き取れます。人に見せないでください。": "Anyone with this code can take over your record. Keep it to yourself.",
+ "別の端末から引き取る": "Take over from another device",
+ "コードを入力": "Enter a code",
+ "引き取る": "Take over",
+ "コピーしました": "Copied",
+ "引き取りました": "Record taken over",
+ "そのコードの記録はありません": "No record for that code",
+ "コードが短すぎます": "That code is too short",
+ "通報": "Report",
+ "通報しました。ありがとうございます": "Reported. Thank you",
+ "送信できませんでした": "Could not send"
 }
