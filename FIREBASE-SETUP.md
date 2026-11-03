@@ -35,7 +35,7 @@
 
 > この鍵は**アカウント共通**で、CUBE TACTICS のレシートでも署名検証は通ります。
 > そのため `functions/index.js` では `bundleId` と `productId` を
-> `com.shuji.thechess` のものに限定してあります（そこは触らないこと）。
+> `jp.epg.thechess` のものに限定してあります（そこは触らないこと）。
 
 ## C. デプロイ（コマンド3つ）
 

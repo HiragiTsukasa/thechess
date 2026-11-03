@@ -1,6 +1,6 @@
 /* ══ Apple IAP とゲームを繋ぐ層 ═══════════════════════════════
    売り物は非消耗型ひとつだけ。
-     com.shuji.thechess.unlimited … 製品版（ふつう／つよい／ランクマッチを開放）
+     jp.epg.thechess.unlimited … 製品版（ふつう／つよい／ランクマッチを開放）
 
    消耗型をやめたので、残高を数える必要がなく、サーバーも要らない。
    非消耗型は Apple が購入履歴を持っているので、機種変でもアプリを消しても
@@ -15,7 +15,7 @@
      アプリ内でも window.__IAP が作られないまま終わる。
 ═════════════════════════════════════════════════════════════ */
 (function(){
-  var UNLIM='com.shuji.thechess.unlimited';
+  var UNLIM='jp.epg.thechess.unlimited';
 
   function setup(){
     if(!(window.CdvPurchase && window.CdvPurchase.store)) return false;

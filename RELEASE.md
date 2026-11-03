@@ -18,8 +18,8 @@
 |---|---|
 | 名前 | The Chess: Groundbreaking（App Store の表示名） |
 | アイコン下の名前 | 日本語の端末は **グラブレチェス**、英語ほかの端末は **The Chess**（`ios/App/App/{ja,en}.lproj/InfoPlist.strings`） |
-| アプリID | `com.shuji.thechess` |
-| 課金 | `com.shuji.thechess.unlimited`（非消耗型・¥980）**1つだけ** |
+| アプリID | `jp.epg.thechess` |
+| 課金 | `jp.epg.thechess.unlimited`（非消耗型・¥980）**1つだけ** |
 | 最低OS | iOS 15.0 |
 | 対象 | iPhone のみ・縦持ち固定 |
 | 言語 | 日本語／英語（端末の言語で自動） |
@@ -79,7 +79,7 @@ npm run open
 | 対象端末 | iPhone のみ |
 | 輸出コンプライアンス | 該当なし（提出のたびの質問が省ける） |
 | 起動画面の背景 | `#0b0c0e`（既定のままだとライトモードで白く光る） |
-| Bundle ID | `com.shuji.thechess` |
+| Bundle ID | `jp.epg.thechess` |
 
 ### 4. App Store Connect の準備
 
@@ -87,7 +87,7 @@ npm run open
 
 | 商品ID | 種別 | 価格 |
 |---|---|---|
-| `com.shuji.thechess.unlimited` | 非消耗型 | ¥980 |
+| `jp.epg.thechess.unlimited` | 非消耗型 | ¥980 |
 
 - 消耗型（`plays12`）は**作らない**。回数制は廃止した
 - プライバシーポリシーURL欄に https://thechess-privacy.netlify.app/ を入れる

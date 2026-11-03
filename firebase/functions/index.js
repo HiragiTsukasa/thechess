@@ -17,9 +17,9 @@ const db = admin.firestore();
 
 const PLAY_MAX = 4;                       /* 無料ぶん／日 */
 const PLAYS_PER_PACK = 12;                /* plays12 で足す回数 */
-const BUNDLE_ID = 'com.shuji.thechess';
-const P_UNLIM = 'com.shuji.thechess.unlimited';
-const P_PLAYS = 'com.shuji.thechess.plays12';
+const BUNDLE_ID = 'jp.epg.thechess';
+const P_UNLIM = 'jp.epg.thechess.unlimited';
+const P_PLAYS = 'jp.epg.thechess.plays12';
 
 /* App Store Server API の鍵。firebase functions:secrets:set で入れる */
 const APPSTORE_KEY_P8    = defineSecret('APPSTORE_KEY_P8');
