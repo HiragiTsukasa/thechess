@@ -6,6 +6,7 @@
 - `thechess-app/resources/README.md` … アイコンの置き方
 - `tools/voice/README.md` … 技名ボイスの作り直し
 - `tools/i18n/README.md` … 英語対応
+- `tools/bgm/README.md` … BGMのループ点と差し替え
 - `DECISIONS.md` … 決まったこと／残っている判断
 - `RELEASE-CHECK.md` … 最初の監査の記録（経緯）
 
@@ -22,6 +23,7 @@
 | 言語 | 日本語／英語（端末の言語で自動） |
 | プライバシーポリシー | https://thechess-privacy.netlify.app/ |
 | 外部通信 | 部屋対戦の時だけ（PeerJS）。CPU戦・パズル・ルールブックは通信ゼロ |
+| BGM | OpenTracks の4曲（商用可・表記不要）。メニューでオンオフ |
 
 `ios/` はこのリポジトリに入っていて、Xcode 側の設定も済ませてある。
 **`npx cap add ios` は実行しないこと**（既存の設定が消える）。
@@ -99,6 +101,7 @@ npm run open
 | **購入** | 「ふつう」か「つよい」を押す → 購入パネル → 購入 → 鍵が外れる | `iap.js` を `deviceready` 待ちに直した効果。**元のコードは必ず失敗していた** |
 | **復元** | アプリを削除 → 入れ直す → ホームの「購入を復元」 | 非消耗型の復元 |
 | **部屋対戦** | 2台で、片方が「キーを作成」（製品版が必要）、もう片方が「キーを入力」 | `limitsNavigationsToAppBoundDomains` を外した影響 |
+| **BGM** | タイトル→対局→ベアキング発動、と鳴り続けるか。メニューでオフにして無音になるか | 曲の入れ替えと、継ぎ目のループ。**本体の消音スイッチが入っていると鳴らない**（iOSの仕様。SEも同じ） |
 
 Sandbox アカウントで購入を試すこと。
 

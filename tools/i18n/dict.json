@@ -701,5 +701,6 @@
  "閉じる": "Close",
  "駒にはそれぞれHPがある。チェックされても負けにはならない。": "Every piece has its own HP. Being checked is not a loss.",
  "駒の威力": "Piece power",
- "駒をタップ → 行き先をタップ": "Tap a piece → tap where it goes"
+ "駒をタップ → 行き先をタップ": "Tap a piece → tap where it goes",
+ "BGMを追加。場面ごとに4曲が切り替わる。メニューでオンオフ": "Added music: four tracks that follow the scene, switchable from the menu"
 }
