@@ -5,3 +5,6 @@ node_modules/
 # 除外するので、プロジェクト設定はコミットする。Info.plist の向き・暗号申告・
 # LaunchScreen の背景色をここで保持している。
 thechess-app/node_modules/
+
+# i18n の中間生成物（tools/i18n で作り直せる）
+thechess-app/www/index.html.i18n
