@@ -1382,10 +1382,10 @@ requestAnimationFrame(loop);
 </div></div>
 <div id="rres"><div id="rrScrim"></div><div id="rrWrap"><div id="rrPop"></div></div><div id="rrScrim2"></div><canvas id="rrStage"></canvas><div id="rrTap">タップして続ける</div></div>
 <div class="screen hide ov" id="buyPanel"><div class="pnl">
-  <div class="pt">対戦回数</div>
+  <div class="pt">製品版</div>
   <div class="sct">いまの状態<em id="byNow">—</em></div>
-  <p class="note2" id="byNote">無料版は1日4回まで。足りなくなったら追加できます</p>
-  <button class="big pri" type="button" id="byUnl"><span>無制限版</span><em>¥980</em></button>
+  <p class="note2" id="byNote">ふつう／つよい／ランクマッチと、部屋を作って友だちを誘うことが開放されます</p>
+  <button class="big pri" type="button" id="byUnl"><span>製品版にする</span><em>¥980</em></button>
   <button class="linkb" type="button" id="byClose">閉じる</button>
 </div></div>
 <div class="screen hide ov" id="cfPanel"><div class="pnl">
@@ -3209,8 +3209,11 @@ let lvLockRefresh=()=>{};   /* 3択の鍵表示を更新する。中身は下の
   /* 無料版は「やさしい」のみ。ふつう・つよい・ランクマッチは鍵付きで見せる
      （隠さない。何が買えるのかが見えていないと買う動機にならない） */
   const lockLv=i=>!paid()&&i>0;
+  /* 部屋対戦は「キーを作成」だけ製品版。「キーを入力」は無料のまま＝
+     買った人が友だちを誘える（友だちグループに最低1本売れて、口コミは止まらない）。 */
+  const lockOn=k=>!paid()&&(k==='rank'||k==='mk');
   const markLocks=()=>B.forEach((b,i)=>{
-    const lk=(pick==='lv'&&lockLv(i))||(pick==='on'&&ONM[i][0]==='rank'&&!paid());
+    const lk=(pick==='lv'&&lockLv(i))||(pick==='on'&&lockOn(ONM[i][0]));
     b.classList.toggle('locked',!!lk);});
   lvLockRefresh=markLocks;
   B.forEach((b,i)=>b.addEventListener('click',e=>{if(!pick)return;e.stopImmediatePropagation();audio();
@@ -3218,7 +3221,8 @@ let lvLockRefresh=()=>{};   /* 3択の鍵表示を更新する。中身は下の
       if(lockLv(i)){openBuy();return;}                 /* 鍵 → 購入パネル */
       cpuLevel=LV[i][0];start('cpu');setTimeout(leave,700);return;}
     const k=ONM[i][0];
-    if(k==='rank'){if(!paid()){openBuy();return;}openRank();return;}   /* 3択を残したまま重ねる＝戻るで一つ前に帰る */
+    if(lockOn(k)){openBuy();return;}
+    if(k==='rank'){openRank();return;}   /* 3択を残したまま重ねる＝戻るで一つ前に帰る */
     if(!ON.mode){toast('通信を準備できませんでした');return;}
     leave();openLobby(k==='mk'?'mk':'join');
     if(k==='mk')setTimeout(()=>{const m=$('mkRoom');m&&m.click();},80);
@@ -3981,7 +3985,8 @@ function openBuy(){
  $('byNow').textContent=paid()?'製品版（購入済み）':'無料版';
  $('byNote').textContent=paid()
   ?'すべてのモードが開放されています'
-  :'無料版で遊べるのは「オフライン・やさしい」とパズル、部屋対戦です。製品版にすると、ふつう／つよい／ランクマッチが開放されます。';
+  :'無料版で遊べるのは「オフライン・やさしい」とパズル、そして友だちの部屋への参加です。'
+   +'製品版にすると、ふつう／つよい／ランクマッチと、部屋を作って友だちを誘うことが開放されます。';
  $('byUnl').style.display=paid()?'none':'';
  pOpen('buyPanel');}
 /* 実際の課金は Apple IAP。ここはその呼び出し口で、Web では成立しない。
