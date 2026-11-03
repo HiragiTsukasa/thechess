@@ -54,10 +54,13 @@ Capacitor 8 は CocoaPods ではなく **Swift Package Manager** を使うので
 全部 `npm run sync`（= `npx cap sync ios`）が `www/` と `node_modules/` から作る。
 **クローン直後と、`www/` を直すたびに流すこと。**
 
-Xcode 側で触るのは**2つだけ**です（向きと端末種別は設定済み）。
+Xcode 側で触るのは**Team だけ**です（向きと端末種別は設定済み）。
 
-1. **Signing & Capabilities** … Team を自分のアカウントにする。Bundle Identifier は `jp.epg.thechess`（変えるなら `capacitor.config.json` の `appId` も合わせる）
-2. **Signing & Capabilities → ＋ Capability** … `In-App Purchase` を追加
+**Signing & Capabilities** … Team を自分のアカウントにする。Bundle Identifier は `jp.epg.thechess`（変えるなら `capacitor.config.json` の `appId` も合わせる）
+
+> **In-App Purchase の Capability は追加しない。** いまの Xcode では一覧から外れている。
+> StoreKit はエンタイトルメントを要求しないので、追加するものが無い。課金が有効かどうかは
+> Developer サイトの App ID 側（`jp.epg.thechess` の In-App Purchase のチェック）で決まる。
 
 ### 設定済みの項目（触らなくてよい）
 

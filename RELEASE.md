@@ -73,10 +73,14 @@ npx @capacitor/assets generate --ios
 npm run open
 ```
 
-触るのは**2つだけ**。
+触るのは**Team だけ**。
 
-1. **Signing & Capabilities** → Team を自分のアカウントに
-2. **Signing & Capabilities** → ＋ Capability → **In-App Purchase** を追加
+**Signing & Capabilities** → Team を自分のアカウントに。
+署名は Automatic なので、プロビジョニングは Xcode が作る。
+
+> **In-App Purchase の Capability は追加しない。** いまの Xcode では一覧から外れている。
+> StoreKit はエンタイトルメントを要求しないので、追加するものが無い。課金が有効かどうかは
+> Developer サイトの App ID 側（`jp.epg.thechess` の In-App Purchase のチェック）で決まる。
 
 以下は設定済みなので触らなくてよい。
 
