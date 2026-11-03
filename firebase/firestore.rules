@@ -17,6 +17,7 @@ service cloud.firestore {
                     && request.auth.uid == uid
                     && request.resource.data.state == 'waiting'
                     && request.resource.data.keys().hasOnly(['state','rate','peer','name','ts'])
+                    && request.resource.data.ts is int
                     && request.resource.data.rate is int
                     && request.resource.data.rate >= 0
                     && request.resource.data.rate <= 100000
@@ -25,7 +26,10 @@ service cloud.firestore {
                     && request.resource.data.name is string
                     && request.resource.data.name.size() <= 24;
 
-      allow delete: if request.auth != null && request.auth.uid == uid;
+      /* 自分のものは常に。他人のものは 60秒より古いときだけ（落ちた端末の後始末） */
+      allow delete: if request.auth != null
+                    && ( request.auth.uid == uid
+                         || request.time.toMillis() - resource.data.ts > 60000 );
 
       allow update: if request.auth != null && (
         request.auth.uid == uid

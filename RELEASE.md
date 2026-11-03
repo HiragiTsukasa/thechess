@@ -8,6 +8,7 @@
 - `tools/i18n/README.md` … 英語対応
 - `tools/bgm/README.md` … BGMのループ点と差し替え
 - `FIREBASE-MATCH.md` … ランクマッチの対人マッチング（**Firebase の設定が要る**）
+- `tools/mm/README.md` … マッチングの取り合いを確かめるシミュレータ
 - `DECISIONS.md` … 決まったこと／残っている判断
 - `RELEASE-CHECK.md` … 最初の監査の記録（経緯）
 

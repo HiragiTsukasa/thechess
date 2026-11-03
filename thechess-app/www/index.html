@@ -3625,21 +3625,25 @@ async function fbFetch(url,opt){
 async function mmPut(peerId){
   const r=await fbFetch(FBDOC()+'/mm/'+fbUid,{method:'PATCH',
     body:JSON.stringify({fields:fvOut({state:'waiting',rate:RKS.rate|0,peer:peerId,
-      name:String(RKS.name||'').slice(0,24),ts:String(Date.now())})})});
+      name:String(RKS.name||'').slice(0,24),ts:Date.now()})})});
   if(!r.ok)throw new Error('put '+r.status);
 }
 async function mmDrop(){try{await fbFetch(FBDOC()+'/mm/'+fbUid,{method:'DELETE'});}catch(e){}}
+/* 落ちた端末が置いていった待ち列を掃除する。60秒より古いものはルールが誰にでも消させる */
+async function mmSweep(uid){try{await fbFetch(FBDOC()+'/mm/'+uid,{method:'DELETE'});}catch(e){}}
 async function mmMine(){
   const r=await fbFetch(FBDOC()+'/mm/'+fbUid);
   if(!r.ok)return null;
-  const j=await r.json();return j&&j.fields?fvIn(j.fields):null;
+  const j=await r.json();
+  if(!j||!j.fields)return null;
+  const d=fvIn(j.fields);d.upd=j.updateTime;return d;
 }
 /* 待っている人を集める。state の等価比較だけなので複合インデックスが要らない */
 async function mmWaiting(){
   const r=await fbFetch(FBDOC()+':runQuery',{method:'POST',
     body:JSON.stringify({structuredQuery:{from:[{collectionId:'mm'}],
       where:{fieldFilter:{field:{fieldPath:'state'},op:'EQUAL',value:{stringValue:'waiting'}}},
-      limit:30}})});
+      limit:10}})});
   if(!r.ok)return [];
   const j=await r.json();
   return (j||[]).filter(x=>x.document).map(x=>{
@@ -3648,15 +3652,22 @@ async function mmWaiting(){
     d.upd=x.document.updateTime;
     return d;});
 }
-/* 掴む。updateTime を条件に付けるので、2人が同じ相手を掴んだら片方が必ず失敗する */
-async function mmClaim(c,myPeer){
-  const u=FBDOC()+'/mm/'+c.uid
-    +'?currentDocument.updateTime='+encodeURIComponent(c.upd)
-    +'&updateMask.fieldPaths=state&updateMask.fieldPaths=with&updateMask.fieldPaths=opPeer'
-    +'&updateMask.fieldPaths=opName&updateMask.fieldPaths=opRate';
-  const r=await fbFetch(u,{method:'PATCH',
-    body:JSON.stringify({fields:fvOut({state:'matched',with:fbUid,opPeer:myPeer,
-      opName:String(RKS.name||'').slice(0,24),opRate:RKS.rate|0})})});
+/* 掴む。『相手を matched にする』と『自分を列から外す』を1回の commit で行い、
+   両方の updateTime を条件に付ける。
+
+   条件を片方だけにすると、A が B を掴んだ直後に B が C を掴めてしまい、
+   A だけが宙に浮く（B はもう C と繋ぐ気でいる）。自分の updateTime も条件に
+   入れておけば、掴まれた側の掴みは必ず失敗し、次の周回で自分が掴まれたことに気付く。
+   300回×50人の総当たりで、取り残しが 3008人 → 0人 になった。 */
+async function mmClaim(c,myPeer,myUpd){
+  const base='projects/'+FB.projectId+'/databases/(default)/documents/mm/';
+  const r=await fbFetch(FBDOC()+':commit',{method:'POST',body:JSON.stringify({writes:[
+    {update:{name:base+c.uid,fields:fvOut({state:'matched',with:fbUid,opPeer:myPeer,
+        opName:String(RKS.name||'').slice(0,24),opRate:RKS.rate|0})},
+     updateMask:{fieldPaths:['state','with','opPeer','opName','opRate']},
+     currentDocument:{updateTime:c.upd}},
+    {delete:base+fbUid,currentDocument:{updateTime:myUpd}}
+  ]})});
   return r.ok;
 }
 
@@ -3671,9 +3682,10 @@ function mmPeer(){
 }
 
 const MM_BUDGET=14000;      /* 探す時間 */
-const MM_TICK=1200;         /* 問い合わせの間隔 */
+const MM_TICK=2000;         /* 問い合わせの間隔。無料枠の読み取りを食うので詰めすぎない */
 const MM_BAND0=150;         /* 最初に見るレート差 */
 const MM_FRESH=25000;       /* これより古いキューは死んだものとして無視 */
+const MM_DEAD=60000;        /* これより古いものは掃除する */
 
 /* 見つかれば {peer,id,conn?,host,name,rate}、見つからなければ null */
 async function mmSearch(){
@@ -3687,7 +3699,8 @@ async function mmSearch(){
     while(Date.now()-t0<MM_BUDGET){
       /* 自分が掴まれていないか */
       const mine=await mmMine();
-      if(mine&&mine.state==='matched'&&mine.opPeer){
+      if(!mine)break;                      /* 自分の列が消えている＝掃除された。やり直さない */
+      if(mine.state==='matched'&&mine.opPeer){
         await mmDrop();
         return {peer:P.peer,id:P.id,host:true,opPeer:mine.opPeer,
                 name:mine.opName||'',rate:mine.opRate|0};
@@ -3695,12 +3708,17 @@ async function mmSearch(){
       /* 待っている人を掴みにいく */
       const band=MM_BAND0+Math.floor((Date.now()-t0)/2000)*200;
       const now=Date.now();
-      const cands=(await mmWaiting())
-        .filter(d=>d.uid!==fbUid&&d.peer&&now-(+d.ts||0)<MM_FRESH&&Math.abs((d.rate|0)-RKS.rate)<=band)
-        .sort((a,b)=>Math.abs(a.rate-RKS.rate)-Math.abs(b.rate-RKS.rate));
+      const all=await mmWaiting();
+      for(const d of all)if(now-(+d.ts||0)>MM_DEAD&&d.uid!==fbUid)mmSweep(d.uid);
+      /* 掴むのは UID が自分より大きい相手だけ。
+         双方が同時に掴むと、別々のドキュメントへの書き込みなので両方成功し、
+         二人とも『つなぎにいく側』になって誰も待ち受けなくなる。
+         向きを固定すれば、どの二人の間でも掴む側は必ず一方に決まる。 */
+      const cands=all
+        .filter(d=>d.uid>fbUid&&d.peer&&now-(+d.ts||0)<MM_FRESH&&Math.abs((d.rate|0)-RKS.rate)<=band)
+        .sort((a,b)=>(+a.ts||0)-(+b.ts||0));   /* 同じ帯なら長く待っている人から */
       for(const c of cands){
-        if(await mmClaim(c,P.id)){
-          await mmDrop();
+        if(await mmClaim(c,P.id,mine.upd)){   /* 成功した時点で自分の列は消えている */
           return {peer:P.peer,id:P.id,host:false,opPeer:c.peer,name:c.name||'',rate:c.rate|0};
         }
       }
