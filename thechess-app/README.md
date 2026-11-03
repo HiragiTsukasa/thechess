@@ -103,7 +103,7 @@ App Store Connect で商品を2つ、同じIDで作ります。
 
 1. **アイコンとスプラッシュ** … `resources/icon.png`（1024×1024）と `resources/splash.png`（2732×2732）を置いて `npx @capacitor/assets generate --ios`
 2. **プライバシーポリシーのURL** … ボタンは配線済みですが、URLが空です。`index.html` の `TERMS_URL`（grep で一発）に入れてください。審査で必須
-3. **課金の実機確認** … `www/iap.js` は `deviceready` 待ちに直しましたが、**実機ではまだ一度も通していません**。購入・復元の両方を必ず確認。商品は **`jp.epg.thechess.unlimited`（非消耗型・¥980）の1つだけ**。無料版は「オフライン・やさしい」のみで、ふつう／つよい／ランクマッチが開放されます
+3. **課金の実機確認** … `www/iap.js` は `deviceready` 待ちに直しましたが、**実機ではまだ一度も通していません**。購入・復元の両方を必ず確認。商品は **`jp.epg.thechess.unlimited`（非消耗型・¥300）の1つだけ**。無料版は「オフライン・やさしい」のみで、ふつう／つよい／ランクマッチが開放されます
 4. **`limitsNavigationsToAppBoundDomains`** … `capacitor.config.json` で `true` にしていますが、Info.plist に `WKAppBoundDomains` がありません。部屋対戦が繋がるか実機で確認のうえ、消すかキーを足すか決めてください
 5. **Firebase** … ランクマッチの対戦相手・レート・対戦回数・購入残高をサーバーへ。日付もサーバー時刻にすれば端末の時計を戻して回数を増やす抜け道が閉じます
 6. **レートの最終数値** … 参加費・基礎報酬・勝敗・内容ボーナスは今の値が仮です

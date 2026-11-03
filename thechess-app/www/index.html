@@ -1430,7 +1430,7 @@ addEventListener('DOMContentLoaded',()=>TRdom());
   <div class="pt">製品版</div>
   <div class="sct">いまの状態<em id="byNow">—</em></div>
   <p class="note2" id="byNote">ふつう／つよい／ランクマッチと、部屋を作って友だちを誘うことが開放されます</p>
-  <button class="big pri" type="button" id="byUnl"><span>製品版にする</span><em>¥980</em></button>
+  <button class="big pri" type="button" id="byUnl"><span>製品版にする</span><em>¥300</em></button>
   <button class="linkb" type="button" id="byClose">閉じる</button>
 </div></div>
 <div class="screen hide ov" id="cfPanel"><div class="pnl">
@@ -4096,6 +4096,9 @@ function openBuy(){
   ?TR('すべてのモードが開放されています')
   :TR('無料版で遊べるのは「オフライン・やさしい」とパズル、そして友だちの部屋への参加です。')
    +TR('製品版にすると、ふつう／つよい／ランクマッチと、部屋を作って友だちを誘うことが開放されます。');
+ /* 値段はストアから。国ごとに通貨も額も違うので焼き込まない（読めていなければ既定の表記のまま） */
+ try{const pz=window.__IAP&&window.__IAP.price&&window.__IAP.price();
+   if(pz)$('byUnl').querySelector('em').textContent=pz;}catch(e){}
  $('byUnl').style.display=paid()?'none':'';
  pOpen('buyPanel');}
 /* 実際の課金は Apple IAP。ここはその呼び出し口で、Web では成立しない。

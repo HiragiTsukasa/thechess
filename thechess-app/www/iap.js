@@ -49,6 +49,19 @@
 
     window.__IAP={
       restore:function(){ store.restorePurchases(); },
+      /* ストアが返す現地表記の価格（"¥300" / "$6.99" / "€5,99"）。
+         国ごとに値段も通貨も違うので、画面に焼き込んではいけない。
+         商品の取得は非同期なので、読めていなければ空を返す */
+      price:function(){
+        try{
+          var pr=store.get(UNLIM, P.Platform.APPLE_APPSTORE);
+          if(!pr) return '';
+          if(pr.pricing && pr.pricing.price) return pr.pricing.price;
+          var off=pr.getOffer && pr.getOffer();
+          var ph=off && off.pricingPhases && off.pricingPhases[0];
+          return (ph && ph.price) || '';
+        }catch(e){ return ''; }
+      },
       buy:function(){
         var pr=store.get(UNLIM, P.Platform.APPLE_APPSTORE);
         var off=pr&&pr.getOffer();
