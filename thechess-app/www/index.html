@@ -3594,7 +3594,9 @@ function rtSend(o){
    ★匿名ログインの鍵は、セーブとは別の localStorage キーに置くこと。
      混ぜるとセーブを書き出したとき鍵がコピーに出ていく。
 ═══════════════════════════════════════════════════════════════════ */
-const FB={apiKey:'',projectId:''};
+/* apiKey は秘密ではない。クライアントに埋め込む前提の公開値で、
+   アプリを開けば誰でも読める。守っているのは Firestore のルール側（firebase/firestore.rules）。 */
+const FB={apiKey:'AIzaSyDvpl3Bdk7IKEg8HXVjkaUb2x4JiDqWwiA',projectId:'the-chess-33d12'};
 const FBKEY='nc_fbauth';                       /* ★セーブ(nc_rank/nc_sess)とは別の棚 */
 const fbReady=()=>!!(FB.apiKey&&FB.projectId);
 const FSDOC=()=>'https://firestore.googleapis.com/v1/projects/'+FB.projectId+'/databases/(default)/documents';
