@@ -39,8 +39,15 @@
 ```bash
 git clone https://github.com/HiragiTsukasa/thechess.git
 cd thechess/thechess-app
+git checkout release-check
 npm install
+npm run sync      # ★必須。これを飛ばすと起動しても真っ白で、購入も動かない
 ```
+
+`ios/` はコミット済みだが、その中の `App/App/public/`（ゲーム本体）、
+`capacitor-cordova-ios-plugins/`（課金プラグイン）、`App/App/capacitor.config.json`、
+`App/App/config.xml` は生成物なので除外してある。`npm run sync` が作る。
+`www/` を直すたびに流すこと。
 
 必要なもの … macOS / Xcode 15以降 / Node 18以降 / Apple Developer アカウント
 

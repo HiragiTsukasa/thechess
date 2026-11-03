@@ -34,10 +34,25 @@ npm install                             # ① 依存を入れる（package-lock.
 #     resources/splash.png   2732×2732
 
 npx @capacitor/assets generate --ios    # ③ 各サイズを生成して ios/App へ
-npm run open                            # ④ Xcode が開く
+npm run sync                            # ④ www と cordova プラグインを ios/ へ（必須）
+npm run open                            # ⑤ Xcode が開く
 ```
 
 Capacitor 8 は CocoaPods ではなく **Swift Package Manager** を使うので、`pod install` は不要です。
+
+### ★ `npm run sync` を忘れないこと
+
+`ios/` はコミットしてあるが、**その中の生成物4つは `.gitignore` で除外されていてクローンには入っていない。**
+
+| 入っていないもの | 無いとどうなるか |
+|---|---|
+| `ios/App/App/public/` | ゲーム本体。起動しても真っ白 |
+| `ios/capacitor-cordova-ios-plugins/` | 課金プラグインのブリッジ。購入が動かない |
+| `ios/App/App/capacitor.config.json` | 実行時のアプリID等 |
+| `ios/App/App/config.xml` | 同上 |
+
+全部 `npm run sync`（= `npx cap sync ios`）が `www/` と `node_modules/` から作る。
+**クローン直後と、`www/` を直すたびに流すこと。**
 
 Xcode 側で触るのは**2つだけ**です（向きと端末種別は設定済み）。
 
