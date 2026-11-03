@@ -1,0 +1,46 @@
+rules_version = '2';
+
+/* 部屋の紙はこの1コレクションだけ。挨拶（SDP）も手も、全部この紙に相乗りする。
+   ホストはホストの欄、ゲストはゲストの欄にしか書けない。
+
+   ★読む・消すルールに「書く中身」の条件を混ぜないこと。
+     混ぜると request.resource が無く、読み取りが必ず403になる。 */
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /rooms/{code} {
+
+      allow get:  if request.auth != null;   // 番号を知っている人だけが1件読める
+      allow list: if false;                  // 一覧は出せない（総当たりで覗かせない）
+
+      // 作れるのは「自分がホストの、ゲストのいない部屋」だけ
+      allow create: if request.auth != null
+                    && request.resource.data.h == request.auth.uid
+                    && !('g' in request.resource.data);
+
+      allow update: if request.auth != null && (
+
+          // ホスト：ホストの欄だけ
+          (resource.data.h == request.auth.uid
+           && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['hi','hu','hd','hn','hr','st','w','t']))
+
+          // ゲスト：ゲストの欄だけ
+       || (('g' in resource.data) && resource.data.g == request.auth.uid
+           && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['gi','gu','gd','gn','gr','st','w','t']))
+
+          // まだ誰もいない部屋に、自分をゲストとして入る
+       || (!('g' in resource.data)
+           && request.resource.data.g == request.auth.uid
+           && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['g','gd','gn','gr','t'])));
+
+      // 捨てられるのはホスト。3分放置された部屋は誰でも捨てられる
+      allow delete: if request.auth != null
+                    && (resource.data.h == request.auth.uid
+                     || request.time.toMillis() - resource.data.t > 180000);
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
