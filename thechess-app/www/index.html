@@ -245,6 +245,7 @@ body[data-picking] #plPill{display:none}
 .big:disabled{opacity:.5}
 #lobby{background:rgba(12,13,15,.97);justify-content:center;padding-top:0}
 #lobby.jn #mkRoom,#lobby.jn #roomsWrap{display:none}
+#lobby.nomk #mkRoom{display:none}   /* 無料版は部屋を作れない（入るのは無料） */
 #lobby.mk #roomsWrap{display:none}
 #lobby h2{font-family:"Zen Old Mincho",serif;font-size:26px;letter-spacing:.12em;margin-bottom:10px}
 .lb{display:flex;flex-direction:column;gap:12px;width:min(86vw,320px);align-items:stretch}
@@ -3311,6 +3312,7 @@ function lobbyMsg(t){$('lobbyMsg').textContent=t||'';}
 function openLobby(kind){$('title').classList.add('hide');$('lobby').classList.remove('hide');$('lobbyMain').classList.remove('hide');$('lobbyWait').classList.add('hide');lobbyMsg('');
   const L=$('lobby');L.classList.remove('jn','mk');
   if(kind==='join'){L.classList.add('jn');}else if(kind==='mk'){L.classList.add('mk');}
+  L.classList.toggle('nomk',!paid());        /* 引数なしで開く経路でも鍵が効くように */
   L.querySelector('h2').textContent=kind==='join'?'キーを入力':kind==='mk'?'キーを作成':'オンライン対戦';
   if(ON.lobbyUnsub)ON.lobbyUnsub();
   $('roomsWrap').classList.toggle('hide',ON.mode!=='db');if(ON.mode!=='db')return;
@@ -3388,7 +3390,7 @@ async function resignOnline(){if(mode!=='online'||!ON.code||over)return;const w=
 function leaveOnline(){if(ON.unsub){ON.unsub();ON.unsub=null;}if(ON.mode==='p2p')p2pClose();ON.code=null;}
 
 $('resumeBtn').addEventListener('click',()=>{const s=loadSess();if(!s)return;audio();if(ON.mode==='p2p'){p2pResume(s);return;}ON.code=s.code;ON.side=s.side;$('title').classList.add('hide');subscribe(s.code,false);});
-$('mkRoom').addEventListener('click',createRoom);
+$('mkRoom').addEventListener('click',()=>{if(!paid()){openBuy();return;}createRoom();});
 $('joinBtn').addEventListener('click',()=>joinRoom($('codeIn').value));
 $('lobbyBack').addEventListener('click',()=>{closeLobby();$('title').classList.remove('hide');});
 $('waitCancel').addEventListener('click',async()=>{if(ON.mode==='p2p'){p2pClose();saveSess(null);$('lobbyWait').classList.add('hide');$('lobbyMain').classList.remove('hide');return;}if(ON.unsub){ON.unsub();ON.unsub=null;}if(ON.code){try{await roomRef(ON.code).update({status:'done',updatedAt:Date.now()});}catch(e){}}saveSess(null);$('lobbyWait').classList.add('hide');$('lobbyMain').classList.remove('hide');});
