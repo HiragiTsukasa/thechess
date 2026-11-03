@@ -16,6 +16,8 @@
 
 | | |
 |---|---|
+| 名前 | The Chess: Groundbreaking（App Store の表示名） |
+| アイコン下の名前 | グラブレチェス（`CFBundleDisplayName`）。**英語の端末でもこの表記が出る**。分けるなら `InfoPlist.strings` の多言語化が要る |
 | アプリID | `com.shuji.thechess` |
 | 課金 | `com.shuji.thechess.unlimited`（非消耗型・¥980）**1つだけ** |
 | 最低OS | iOS 15.0 |

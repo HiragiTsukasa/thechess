@@ -1,6 +1,6 @@
 {
   "appId": "com.shuji.thechess",
-  "appName": "The Chess",
+  "appName": "グラブレチェス",
   "webDir": "www",
   "ios": {
     "contentInset": "never",

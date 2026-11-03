@@ -530,8 +530,8 @@ body.titleOn #tutQ{opacity:0;pointer-events:none}
 body{margin:0 auto;background:var(--bg);color:var(--ink);font-family:&quot;Zen Old Mincho&quot;,serif;max-width:430px;padding-bottom:40px}
 header{position:sticky;top:0;z-index:9;background:rgba(18,20,23,.96);border-bottom:1px solid var(--line);
  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.brand{display:flex;align-items:baseline;gap:8px;padding:12px 56px 8px 16px}
-.brand b{font-family:&quot;Dela Gothic One&quot;,sans-serif;font-style:italic;font-size:17px;font-weight:400}
+.brand{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:11px 56px 8px 16px}
+.brand b{font-family:&quot;Dela Gothic One&quot;,sans-serif;font-style:italic;font-size:17px;font-weight:400;white-space:nowrap}
 .brand span{font-size:10px;color:var(--sub);letter-spacing:.06em}
 nav{display:flex;gap:5px;padding:0 12px 10px;position:relative}
 nav button{all:unset;flex:1;height:32px;display:grid;place-items:center;border-radius:9px;font-size:12.5px;
@@ -622,7 +622,7 @@ ul.log li b{display:block;font-size:10px;font-family:&quot;IBM Plex Mono&quot;,m
 .foot{font-size:10px;color:#5f666e;text-align:center;margin:22px 0 0;font-family:&quot;IBM Plex Mono&quot;,monospace}
 &lt;/style&gt;&lt;/head&gt;&lt;body&gt;
 &lt;header&gt;
- &lt;div class=&quot;brand&quot;&gt;&lt;b&gt;The Chess&lt;/b&gt;&lt;span&gt;ルールブック ・ 数値は調整中&lt;/span&gt;&lt;/div&gt;
+ &lt;div class=&quot;brand&quot;&gt;&lt;b&gt;The Chess: Groundbreaking&lt;/b&gt;&lt;span&gt;ルールブック ・ 数値は調整中&lt;/span&gt;&lt;/div&gt;
  &lt;nav&gt;&lt;span id=&quot;navInd&quot;&gt;&lt;/span&gt;&lt;button class=&quot;on&quot; data-t=&quot;play&quot;&gt;遊び方&lt;/button&gt;&lt;button data-t=&quot;pieces&quot;&gt;駒&lt;/button&gt;
  &lt;button data-t=&quot;skills&quot;&gt;技&lt;/button&gt;&lt;button data-t=&quot;log&quot;&gt;更新&lt;/button&gt;&lt;/nav&gt;
 &lt;/header&gt;
@@ -678,7 +678,7 @@ ul.log li b{display:block;font-size:10px;font-family:&quot;IBM Plex Mono&quot;,m
  &lt;div id=&quot;skList&quot;&gt;&lt;/div&gt;
 &lt;/section&gt;
 &lt;section id=&quot;s-log&quot;&gt;&lt;ul class=&quot;log&quot; id=&quot;logList&quot;&gt;&lt;/ul&gt;&lt;/section&gt;
-&lt;p class=&quot;foot&quot;&gt;The Chess — rulebook&lt;/p&gt;
+&lt;p class=&quot;foot&quot;&gt;The Chess: Groundbreaking — rulebook&lt;/p&gt;
 &lt;/main&gt;
 &lt;script&gt;
 /* 文言は親の辞書を使う（同一オリジンの srcdoc なので parent を参照できる）。

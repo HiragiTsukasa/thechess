@@ -2,7 +2,7 @@
   "name": "thechess",
   "version": "1.0.0",
   "private": true,
-  "description": "The Chess - 走った距離が攻撃力になるHP制チェス",
+  "description": "The Chess: Groundbreaking - 走った距離が攻撃力になるHP制チェス",
   "scripts": {
     "init": "npm install && npx cap add ios && npx cap sync ios",
     "sync": "npx cap sync ios",

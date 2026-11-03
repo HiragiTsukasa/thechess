@@ -1,4 +1,4 @@
-# The Chess — iOS アプリ化キット
+# The Chess: Groundbreaking — iOS アプリ化キット
 
 `www/` の中身がそのままアプリの画面になります。通信は一切しません（Three.js・PeerJS・フォントは全部同梱）。
 部屋対戦だけは PeerJS の公開シグナリングを使うので、そこだけネットが要ります。
