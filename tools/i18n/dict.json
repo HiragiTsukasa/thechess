@@ -700,5 +700,9 @@
  "駒の威力": "Piece power",
  "駒をタップ → 行き先をタップ": "Tap a piece → tap where it goes",
  "BGMを追加。場面ごとに4曲が切り替わる。メニューでオンオフ": "Added music: four tracks that follow the scene, switchable from the menu",
- "このキーを相手に伝えてください。相手が「キーを入力」から入れると対局が始まります。": "Give this key to the other player. The game starts when they enter it under Enter a key."
+ "このキーを相手に伝えてください。相手が「キーを入力」から入れると対局が始まります。": "Give this key to the other player. The game starts when they enter it under Enter a key.",
+ "マッチング": "Matchmaking",
+ "対戦相手を探しています…": "Looking for an opponent…",
+ "ランクマッチ ・ あなたは{0}": "Ranked · You are {0}",
+ "相手の接続が切れました": "Your opponent disconnected"
 }
