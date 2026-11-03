@@ -25,11 +25,17 @@ HTML に直接書かれた日本語（静的テキスト・aria-label 等）は*
 
 ```bash
 cd tools/i18n
-node extract.js                 # 調査のみ。extracted.json
 node transform.js --write       # TR()化して www/index.html.i18n を書く。strings.json も出る
 node runtime.js dict.json       # ランタイムと辞書を差し込む
 node verify.js                  # ★ TR() を剥がして元と1バイト一致するか検証
+mv ../../thechess-app/www/index.html{.i18n,}   # 問題なければ差し替え
 ```
+
+**注意**: `transform.js` は `index.html` を入力にする。すでに `TR()` 化された
+ファイルに対して流すと二重に包まれるので、やり直すときは git から元を戻すこと。
+
+`extract.js` は調査専用（何がどこにあるか見るだけ。書き換えない）。
+`dict-{a,b,c,d,e}.json` を結合したものが `dict.json`。分けてあるのは長さ・種類ごと。
 
 `verify.js` が通れば、**日本語モードの挙動は元と完全に同じ**だと言える
 （日本語では `TR(s)===s` なので、剥がした結果が元と一致すれば変換は無害）。
@@ -41,5 +47,6 @@ node verify.js                  # ★ TR() を剥がして元と1バイト一致
   いまのコードには該当なし（0件）。
 - ランクマッチの相手名を作る語（`刃` `塔` `影` など）は辞書で個別に訳すと不自然なので、
   英語ではラテン名のみを使うようコード側で分岐させる。
-- 盤上の漢字1文字バッジ（`双`=Double Check / `縫`=Pin / `技` / `力`）は、英語では
-  3文字の略語（`DBL` `PIN` `SKL` `PWR`）にし、幅が足りないぶん CSS を調整する。
+- 盤上の漢字1文字バッジは英語で3文字の略語にしてある。
+  `双`→`DBL`（Double Check） / `縫`→`PIN` / `技`→`SKL` / `力`→`PWR`。
+- ランクマッチの相手名を作る語は、英語ではラテン名のみを使うようコード側で分岐させる（未対応）。

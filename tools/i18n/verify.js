@@ -82,7 +82,7 @@ const sdRe = /(<iframe id="rbFrame" title="[^"]*" srcdoc=")([\s\S]*?)(">)/;
 {
   const m = sdRe.exec(b);
   let inner = unesc(m[2]);
-  inner = inner.replace(/\n\/\* 文言は親の辞書を使う[\s\S]*?\nconst TR=s=>parent\.__TR\(s\), TRF=\(f,\.\.\.a\)=>parent\.__TRF\(f,\.\.\.a\);\n/, '');
+  inner = inner.replace(/\n\/\* 文言は親の辞書を使う[\s\S]*?\nconst TR=s=>parent\.__TR\(s\), TRF=\(f,\.\.\.a\)=>parent\.__TRF\(f,\.\.\.a\);\nconst __rbTR=[\s\S]*?addEventListener\('load',__rbTR\);\n/, '');
   const re = /<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g;
   let s2, edits = [];
   while ((s2 = re.exec(inner))) {

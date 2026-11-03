@@ -25,7 +25,30 @@ const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&
                   .replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
 
 const strings = new Set();      // 辞書に入れる日本語
-const report = { lit: 0, tpl: 0, skipKey: 0, skipped: [] };
+const report = { lit: 0, tpl: 0, skipKey: 0, skipped: [], htmlText: 0, htmlAttr: 0 };
+
+/* HTML に直書きされた日本語も辞書に入れる（マークアップは一切変えない）。
+   実行時は TRdom() が DOM を走査して差し替える。 */
+function collectHtml(doc, label, skipRanges) {
+  const inSkip = i => skipRanges.some(([a, b]) => i >= a && i < b);
+  let m;
+  const reText = />([^<>]+)</g;
+  while ((m = reText.exec(doc))) {
+    const at = m.index + 1;
+    if (inSkip(at)) continue;
+    const t = m[1].trim();
+    if (t && JP.test(t)) { strings.add(t); report.htmlText++; }
+  }
+  for (const attr of ['aria-label', 'placeholder', 'title', 'alt']) {
+    const ra = new RegExp(`${attr}="([^"]*)"`, 'g');
+    while ((m = ra.exec(doc))) {
+      const at = m.index + m[0].indexOf(m[1]);
+      if (inSkip(at)) continue;
+      const t = m[1].trim();
+      if (t && JP.test(t)) { strings.add(t); report.htmlAttr++; }
+    }
+  }
+}
 
 function transformCode(code, label) {
   let ast;
@@ -104,10 +127,16 @@ if (!sd) throw new Error('rbFrame の srcdoc が見つからない');
   }
   edits.sort((a, b) => b.s - a.s);
   for (const ed of edits) out = out.slice(0, ed.s) + ed.t + out.slice(ed.e);
+  collectHtml(out, 'rulebook', edits.map(e => [e.s, e.s + e.t.length]));
   // ルールブック側の T/TF は親の実装を借りる
   out = out.replace(/<script>/, `<script>
-/* 文言は親の辞書を使う（同一オリジンの srcdoc なので parent を参照できる） */
+/* 文言は親の辞書を使う（同一オリジンの srcdoc なので parent を参照できる）。
+   HTML に直書きされた日本語は、この文書の DOM も親の TRdom に走査してもらう。
+   動的に組む部分は TR() を通っているので、ここは初期HTMLの殻だけでよい。 */
 const TR=s=>parent.__TR(s), TRF=(f,...a)=>parent.__TRF(f,...a);
+const __rbTR=()=>{try{parent.__TRdom(document);}catch(e){}};
+if(document.readyState==='loading')addEventListener('DOMContentLoaded',__rbTR);else __rbTR();
+addEventListener('load',__rbTR);
 `);
   html = html.slice(0, sd.index + sd[1].length) + esc(out) + html.slice(sd.index + sd[1].length + sd[2].length);
 }
@@ -126,8 +155,21 @@ const TR=s=>parent.__TR(s), TRF=(f,...a)=>parent.__TRF(f,...a);
   for (const ed of edits) html = html.slice(0, ed.s) + ed.t + html.slice(ed.e);
 }
 
+{
+  const skip = [];
+  const re = /<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g;
+  let m;
+  while ((m = re.exec(html))) { const s0 = m.index + m[0].indexOf(m[1]); skip.push([s0, s0 + m[1].length]); }
+  const st = /<style(?:\s[^>]*)?>([\s\S]*?)<\/style>/g;
+  while ((m = st.exec(html))) { const s0 = m.index + m[0].indexOf(m[1]); skip.push([s0, s0 + m[1].length]); }
+  const sd2 = sdRe.exec(html);
+  if (sd2) { const a = sd2.index + sd2[1].length; skip.push([a, a + sd2[2].length]); }
+  collectHtml(html, 'main', skip);
+}
+
 const list = [...strings].sort();
 console.log(`リテラル置換 ${report.lit}件 / テンプレート置換 ${report.tpl}件`);
+console.log(`HTML直書き: テキスト ${report.htmlText}件 / 属性 ${report.htmlAttr}件（マークアップは変更せず辞書にだけ入れる）`);
 console.log(`訳さず残した参照用の文字列: ${report.skipKey}件`);
 report.skipped.slice(0, 10).forEach(s => console.log('   ' + s));
 console.log(`辞書に入る日本語: ${list.length}件 / ${list.reduce((a, s) => a + s.length, 0).toLocaleString()}字`);

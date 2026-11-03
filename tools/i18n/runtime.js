@@ -13,7 +13,7 @@ const tbl = {};
 let done = 0;
 for (const s of strings) {
   const v = DICT[s];
-  if (typeof v === 'string' && v !== '') { tbl[s] = v; done++; }
+  if (typeof v === 'string') { tbl[s] = v; done++; }   // 空文字も有効な訳（語順の都合で前置詞を消す場合がある）
 }
 
 const runtime = `<script>
@@ -24,7 +24,7 @@ const runtime = `<script>
 const TRX=${JSON.stringify(tbl)};
 let TRLANG=(()=>{try{const v=localStorage.getItem('nc_lang');if(v==='ja'||v==='en')return v;}catch(e){}
   return /^ja/i.test(navigator.language||navigator.userLanguage||'')?'ja':'en';})();
-function TR(s){if(TRLANG==='ja')return s;const v=TRX[s];return v==null||v===''?s:v;}
+function TR(s){if(TRLANG==='ja')return s;const v=TRX[s];return v==null?s:v;}
 function TRF(f,...a){return TR(f).replace(/\\{(\\d+)\\}/g,(m,i)=>a[+i]==null?'':a[+i]);}
 /* HTML に直接書いてある日本語は、起動時にここで差し替える（マークアップは触らない） */
 function TRdom(root){
