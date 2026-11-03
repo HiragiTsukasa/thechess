@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>お問い合わせ｜The Chess: Groundbreaking</title>
+<meta name="description" content="The Chess: Groundbreaking のお問い合わせ窓口。不具合の報告、不快な表示名の通報、購入に関する相談。">
+<meta name="robots" content="index,follow">
+<style>
+  :root{
+    --bg:#121417; --panel:#1a1d21; --line:#2d3238;
+    --ink:#efe9dc; --sub:#9aa0a6; --brass:#c9a45c; --red:#d0604a;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.9 "Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;
+    word-break:normal; overflow-wrap:anywhere;
+  }
+  .wrap{max-width:720px; margin:0 auto; padding:0 20px 72px}
+  header{border-bottom:1px solid var(--line); background:var(--panel); margin-bottom:34px}
+  header .wrap{padding-top:36px; padding-bottom:26px}
+  .app{font-size:12px; font-weight:700; letter-spacing:.2em; color:var(--brass); margin:0 0 8px}
+  h1{font-size:25px; font-weight:700; margin:0 0 10px; line-height:1.45}
+  .upd{font-size:13px; color:var(--sub); margin:0}
+  h2{
+    font-size:18px; font-weight:700; margin:42px 0 12px; padding-bottom:8px;
+    border-bottom:1px solid var(--line);
+  }
+  p{margin:0 0 14px}
+  ul{margin:0 0 14px; padding-left:1.3em}
+  li{margin:0 0 10px}
+  strong{font-weight:700; color:#fff}
+  .lead{
+    background:var(--panel); border:1px solid var(--brass); border-radius:12px;
+    padding:16px 18px; margin:0 0 10px;
+  }
+  .lead ul{margin:0; padding-left:1.2em}
+  .lead li{margin:0 0 7px}
+  .lead li:last-child{margin:0}
+  .note{
+    background:rgba(208,96,74,.10); border-left:3px solid var(--red);
+    padding:12px 14px; margin:0 0 14px; border-radius:0 8px 8px 0; font-size:15px;
+  }
+  dl{margin:0 0 14px}
+  dt{font-weight:700; margin:16px 0 4px; color:var(--brass)}
+  dd{margin:0}
+  a{color:var(--brass)}
+  table{width:100%; border-collapse:collapse; margin:0 0 14px; font-size:14.5px}
+  th,td{border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top}
+  th{background:var(--panel); color:var(--sub); font-weight:700; white-space:nowrap}
+  footer{
+    margin-top:50px; padding-top:20px; border-top:1px solid var(--line);
+    font-size:14px; color:var(--sub);
+  }
+  @media (max-width:430px){
+    body{font-size:15px}
+    h1{font-size:21px}
+    h2{font-size:17px}
+    .wrap{padding:0 16px 56px}
+    table{font-size:13.5px}
+    th,td{padding:7px 8px}
+  }
+
+  form{display:flex;flex-direction:column;gap:14px;margin:26px 0 0}
+  label{font-size:14px;color:var(--sub)}
+  label b{display:block;color:var(--ink);font-size:15px;margin-bottom:5px}
+  input,select,textarea{width:100%;background:var(--panel);color:var(--ink);
+    border:1px solid var(--line);border-radius:9px;padding:11px 13px;font:inherit;font-size:15px}
+  textarea{min-height:150px;resize:vertical;line-height:1.7}
+  button{appearance:none;border:none;border-radius:10px;padding:14px;font:inherit;font-size:16px;
+    font-weight:700;background:var(--brass);color:#17120c;cursor:pointer}
+  button:hover{filter:brightness(1.07)}
+  .hp{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+  <p class="app">THE CHESS: GROUNDBREAKING</p>
+  <h1>お問い合わせ</h1>
+  <p class="upd">返信までに数日いただくことがあります</p>
+</div></header>
+
+<main class="wrap">
+
+<p>個人で作っているアプリです。いただいた内容はすべて開発者本人が読みます。</p>
+
+<h2>こんなときに</h2>
+
+<ul>
+  <li>不具合を見つけた（どの画面で何をしたか書いていただけると助かります）</li>
+  <li><strong>不快な表示名を見かけた</strong>（相手の表示名をそのまま書いてください）</li>
+  <li>購入したのに開放されない</li>
+  <li>プライバシーに関する問い合わせ、データの削除の依頼</li>
+</ul>
+
+<div class="note">
+  <strong>購入の返金は App Store の扱いです。</strong>
+  こちらでは処理できないため、<a href="https://reportaproblem.apple.com/">reportaproblem.apple.com</a> からお手続きください。
+</div>
+
+<form name="support" method="POST" data-netlify="true" netlify-honeypot="company">
+  <input type="hidden" name="form-name" value="support">
+  <p class="hp"><label>company <input name="company"></label></p>
+
+  <label><b>種類</b>
+    <select name="kind">
+      <option>不具合の報告</option>
+      <option>不快な表示名の通報</option>
+      <option>購入について</option>
+      <option>プライバシーについて</option>
+      <option>その他</option>
+    </select>
+  </label>
+
+  <label><b>内容</b>
+    <textarea name="message" required placeholder="できるだけ具体的に書いてください。&#10;例：ランクマッチで相手が見つかったあと、盤が出ずに固まりました。iPhone 15、iOS 18.2。"></textarea>
+  </label>
+
+  <label><b>返信先のメールアドレス</b>（任意）
+    <input type="email" name="email" placeholder="返信が要らなければ空欄で構いません">
+  </label>
+
+  <button type="submit">送信</button>
+</form>
+
+<h2>送信される内容</h2>
+
+<p>上のフォームに書いた内容だけが送られます。アプリのデータ、端末の情報、位置情報などが自動で付くことはありません。メールアドレスは、空欄にすれば送られません。</p>
+
+<p><a href="/">プライバシーポリシーへ戻る</a></p>
+
+<footer>
+  The Chess: Groundbreaking / 個人開発
+</footer>
+
+</main>
+</body>
+</html>
