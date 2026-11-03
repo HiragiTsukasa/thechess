@@ -1,5 +1,7 @@
 # テスト用の一時ファイル
 shot-*.png
 node_modules/
-thechess-app/ios/
+# ios/ は Capacitor 自身の ios/.gitignore が生成物（public・Pods・DerivedData 等）を
+# 除外するので、プロジェクト設定はコミットする。Info.plist の向き・暗号申告・
+# LaunchScreen の背景色をここで保持している。
 thechess-app/node_modules/

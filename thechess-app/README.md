@@ -22,33 +22,38 @@ thechess-app/
 
 必要なもの … macOS / Xcode 15以降 / Node 18以降 / Apple Developer アカウント
 
-**順番が大事です。** アイコンの生成は `ios/` が出来てからでないと動きません
-（`@capacitor/assets` の書き込み先が既定で `ios/App` のため）。
+`ios/` はこのリポジトリにコミット済みなので、`cap add ios` は要りません。
+向き・輸出コンプライアンス・起動画面の背景色・iPhone専用の設定は**入れてあります**。
 
 ```bash
 cd thechess-app
+npm install                             # ① 依存を入れる（package-lock.json で固定済み）
 
-# ① iOSプロジェクトを作る（ここで ios/App が出来る）
-npm run init                            # npm install → cap add ios → cap sync
-
-# ② 用意したアイコンを置く
+# ② 用意したアイコンを置く（詳しくは resources/README.md）
 #     resources/icon.png     1024×1024・透過なし
 #     resources/splash.png   2732×2732
-#    （1枚だけで済ませるなら resources/ ではなく assets/logo.png を置いて
-#      npx @capacitor/assets generate --ios --iconBackgroundColor '#0b0c0e' --splashBackgroundColor '#0b0c0e'）
 
-# ③ 各サイズを生成して ios/App へ書き込む
-npx @capacitor/assets generate --ios
-
-# ④ Xcode を開く
-npm run open
+npx @capacitor/assets generate --ios    # ③ 各サイズを生成して ios/App へ
+npm run open                            # ④ Xcode が開く
 ```
 
-Xcode 側で3つだけ触ります。
+Capacitor 8 は CocoaPods ではなく **Swift Package Manager** を使うので、`pod install` は不要です。
+
+Xcode 側で触るのは**2つだけ**です（向きと端末種別は設定済み）。
 
 1. **Signing & Capabilities** … Team を自分のアカウントにする。Bundle Identifier は `com.shuji.thechess`（変えるなら `capacitor.config.json` の `appId` も合わせる）
-2. **General → Deployment Info** … Device を iPhone のみ、Orientation は **Portrait だけ**チェック
-3. **Signing & Capabilities → ＋ Capability** … `In-App Purchase` を追加
+2. **Signing & Capabilities → ＋ Capability** … `In-App Purchase` を追加
+
+### 設定済みの項目（触らなくてよい）
+
+| 項目 | 値 | どこ |
+|---|---|---|
+| 画面の向き | 縦のみ | `ios/App/App/Info.plist` |
+| 対象端末 | iPhone のみ | `TARGETED_DEVICE_FAMILY = 1` |
+| 輸出コンプライアンス | 該当なし | `ITSAppUsesNonExemptEncryption = false`（提出のたびの質問が省ける） |
+| 起動画面の背景 | `#0b0c0e` | `LaunchScreen.storyboard`（既定のままだとライトモードで白く光る） |
+| 必要CPU | arm64 | 既定の armv7 は32bit機用で実態と合わないため |
+| Bundle ID / 最低OS | `com.shuji.thechess` / iOS 15.0 | `project.pbxproj` |
 
 これで実機にビルドすれば動きます。`www/` を直したあとは `npm run sync` だけで反映されます。
 
