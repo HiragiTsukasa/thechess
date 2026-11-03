@@ -5,6 +5,9 @@
 **プライマリ言語は英語（U.S.）**にして、日本語をローカリゼーションとして足す。
 そうしないと、英語圏以外の国で日本語のページが出る。
 
+**軸は「駒にHPがあること」と「駒がスキルを持つこと」。** 走った距離が威力になるのは
+ダメージの計算式の一部であって、売りではない。前の草案はそこを取り違えていた。
+
 ---
 
 ## 英語（U.S.）
@@ -19,45 +22,52 @@ The Chess: Groundbreaking
 ### Subtitle（30文字以内）
 
 ```
-Chess where distance is power
+Chess with HP and skills
 ```
-29文字
+24文字
 
 ### Promotional Text（170文字以内・審査なしで差し替え可）
 
 ```
-Pieces have HP. The further one travels, the harder it hits. Twenty-two techniques fire on a 3D board, and a lone king fights back twice as hard.
+Every piece has HP, and every piece has skills. A rook fires down an open file, a bishop heals, a knight splits its charge between two targets and returns.
 ```
-144文字
+152文字
 
 ### Keywords（100文字以内・カンマ区切り・スペースを入れない）
 
 ```
-chess,hp,rpg,tactics,board,strategy,puzzle,turn,offline,rating,duel,king,3d,solo
+chess,hp,skill,rpg,tactics,board,strategy,puzzle,turn,offline,rating,duel,3d,solo
 ```
-79文字
+80文字
 
 ### Description
 
 ```
-Chess, but every piece has HP, and the distance it travels becomes the force of its blow.
+Chess where the pieces have HP, and every one of them has skills.
 
-A rook that crosses four squares hits for 340. The same rook moving one square barely scratches. You are no longer choosing where a piece should stand. You are choosing how far it should run before it lands.
+Nothing is captured outright. A rook does not remove a knight from the board; it takes 340 off it, and the knight stays and hits back. Games are won by grinding the enemy king's HP to zero, so a damaged piece is still a piece, and a piece that survives on 40 HP can still decide the game.
 
-Checkmate is gone. You win by taking the enemy king's HP to zero.
+TWENTY-TWO SKILLS
+Pins, forks, skewers, discovered attacks and double checks are not notation here. Each one is a move you fire, with its name called out over the board.
 
-TWENTY-TWO TECHNIQUES
-Pins, forks, skewers, discovered attacks and double checks are not notation here. Each one fires on the board, with its name called out. A knight that lands on two targets at once splits its charge between them and returns. A rook with a clear file fires straight down it.
+Laser - a rook with a clear file shoots straight down it, hitting everything in line.
+Sanctuary - a bishop heals a friendly piece instead of attacking.
+Homecoming - a piece deep in enemy territory returns to its own rank.
+Fork - a knight threatening two pieces splits its charge between both and comes back.
+Spoils - kill something and take back part of its HP as healing.
 
 THE BARE KING
-Strip an opponent down to the king alone and it does not surrender. It heals, it doubles its power, it strikes back at anyone who touches it, and for eight turns it is the most dangerous piece on the board. Many games are decided after that moment, not before it.
+Strip an opponent down to the king alone and it does not surrender. It heals, its power doubles, it strikes back at anyone who touches it, and for eight turns it is the most dangerous piece on the board. Many games turn after that moment, not before it.
+
+HOW DAMAGE WORKS
+A piece's own power, multiplied by how far it came, give or take a few percent, with room for a critical. For a rook or a bishop that is the squares crossed; for a knight it is how many pieces it vaulted. A rook that runs four squares hits far harder than one that shuffles a single square, so where a piece begins its run matters as much as where it lands.
 
 WHAT IS IN IT
 - Offline matches against three strengths of opponent
-- Ranked play with a ladder from Pawn to Grandmaster, scored on how you won rather than whether you won
+- Ranked play from Pawn to Grandmaster, scored on how you won rather than whether you won
 - Room matches: send a friend a four-digit key and play
-- 25 puzzles, each built around one technique
-- A rulebook where all 22 techniques play out on a 3D board
+- 25 puzzles, each built around one skill
+- A rulebook where all 22 skills play out on a 3D board
 
 NO ADS. NO SUBSCRIPTION.
 Easy offline, the puzzles and the rulebook are free forever, with no daily limit. One purchase unlocks the other difficulties, ranked play and hosting rooms. That is the only purchase in the app.
@@ -78,45 +88,52 @@ The Chess: Groundbreaking
 ### Subtitle（30文字以内）
 
 ```
-走った距離が、そのまま攻撃力になる
+駒にHPがあり、駒がスキルを撃つチェス
 ```
-17文字
+18文字
 
 ### Promotional Text（170文字以内）
 
 ```
-駒にHPがある。遠くまで走った駒ほど強く殴る。22の技が3Dの盤の上で発動し、裸の王は倍の力で殴り返してくる。
+駒にHPがある。そして駒がスキルを持つ。列の通ったルークは撃ち抜き、ビショップは味方を癒し、ナイトは2体へ突進を分けて戻ってくる。
 ```
-56文字
+63文字
 
 ### Keywords（100文字以内）
 
 ```
-チェス,HP,RPG,戦略,ボード,パズル,ターン制,オフライン,レート,対戦,詰将棋,頭脳
+チェス,HP,スキル,RPG,戦略,ボード,パズル,ターン制,オフライン,レート,対戦,頭脳
 ```
 45文字
 
 ### Description
 
 ```
-チェス。ただし駒にはHPがあり、走った距離がそのまま一撃の重さになる。
+駒にHPがあり、駒ひとつひとつがスキルを持つチェス。
 
-4マス走ったルークは340ダメージ。同じルークが1マスしか動かなければ、かすり傷にしかならない。「どこに置くか」ではなく「どこから走らせるか」を選ぶゲームになる。
+駒は取られない。ルークがナイトを盤から消すのではなく、340を削る。ナイトは残って殴り返してくる。勝ち負けは相手のキングのHPを0にできるかで決まるので、傷ついた駒もまだ駒であり、HP40で生き残った1体が勝負を決めることがある。
 
-チェックメイトは無い。相手のキングのHPを0にした方が勝ち。
+■ 22のスキル
+ピン、フォーク、スキュア、ディスカバードアタック、ダブルチェック。ここでは記譜ではなく、技名とともに盤の上で発動する。
 
-■ 22の技
-ピン、フォーク、スキュア、ディスカバードアタック、ダブルチェック。ここでは記譜ではなく、盤の上で技名とともに発動する。2体同時に狙えるナイトは突進を分け、元のマスへ戻ってくる。列が通ったルークは、その列をまっすぐ撃ち抜く。
+Laser … 列の通ったルークが、その列をまっすぐ撃ち抜く
+Sanctuary … ビショップが攻撃の代わりに味方を回復する
+Homecoming … 敵陣深くの駒が、自陣へ帰還する
+Fork … 2体を同時に狙えるナイトが、突進を分けて元のマスへ戻る
+Spoils … 倒した駒のHPの一部を、自分の回復として受け取る
 
 ■ ベアキング
 相手を王ひとつまで削っても、終わらない。回復し、力が倍になり、触れた者に殴り返し、8ターンのあいだ盤上で最も危険な駒になる。勝負はこの瞬間の「あと」に決まることが多い。
 
+■ ダメージの決まり方
+駒ごとの威力 × どれだけ来たか ± 数パーセント、そこに会心が乗る。ルークやビショップなら走ったマス数、ナイトなら飛び越えた駒の数。4マス走ったルークは、1マスだけ動いたルークよりはるかに重い。どこへ置くかと同じだけ、どこから走らせるかが効いてくる。
+
 ■ 入っているもの
 ・オフライン対戦（3段階の強さ）
-・ランクマッチ。ポーンからグランドマスターまでの階級。「勝ったか」ではなく「どう勝ったか」で点が付く
+・ランクマッチ。ポーンからグランドマスターまで。「勝ったか」ではなく「どう勝ったか」で点が付く
 ・部屋対戦。4桁のキーを友だちに渡すだけ
-・パズル25問。1問につき1つの技
-・ルールブック。22の技すべてが3Dの盤の上で動く
+・パズル25問。1問につき1つのスキル
+・ルールブック。22のスキルすべてが3Dの盤の上で動く
 
 ■ 広告なし。サブスクなし。
 オフラインの「やさしい」、パズル、ルールブックは、回数制限なく無料のまま遊べる。買い切り1回で、他の難易度とランクマッチ、部屋の作成が開く。アプリ内の購入はそれ1つだけ。
@@ -152,17 +169,19 @@ Restore is in the menu at the top right.
 - 「世界中のプレイヤーと対戦」… 相手が見つからないときはCPU。断定しない
 - 「リアルタイム対戦」… ターン制
 - 「AIが学習」… していない
+- **「走った距離が攻撃力」を見出しにしない** … ダメージ計算の一部であって、このゲームの売りではない
 
 ---
 
 ## スクリーンショット
 
-`store/` に、UIだけで成り立つ2枚を各サイズ・各言語で置いた（6.7インチ 1290×2796 / 6.5インチ 1242×2208）。
+`store/` に3枚を各サイズ・各言語で置いた（6.7インチ 1290×2796 / 6.5インチ 1242×2208）。
 
 | | |
 |---|---|
-| `1-title` | タイトル。ロゴと3つのボタン |
-| `2-mechanic` | ルールブックの「走った距離が、そのまま力になる」。**4マス走ると340ダメージ**がそのまま出ている。このゲームが何なのかを1枚で説明できる唯一の画面 |
+| `1-title` | タイトル |
+| **`2-pieces`** | **ルールブックの「駒」。ポーン320HP／ナイト480HP／ビショップ520HP／ルーク640HP と、各駒のスキル名（Phalanx・Tempest・Sanctuary・Laser …）が同じ画面に出ている。このゲームの売り2つを1枚で見せられる唯一の画面なので、ここを先頭に置く** |
+| `3-skills` | ルールブックの「技」。Castling・En Passant と、3Dの盤で動くデモ |
 
 ### 盤の写真は実機で撮ること
 
@@ -175,8 +194,9 @@ Restore is in the menu at the top right.
 
 | | 撮るタイミング |
 |---|---|
-| 技の発動 | 技名が大きく出て、ダメージ数字が飛んでいる瞬間 |
+| **スキルの発動** | 技名が大きく出て、ダメージ数字が飛んでいる瞬間。**ここが一番の売り** |
 | ベアキング | 王が1体になって光り、HPバーが伸びた直後 |
 | リザルト | 「勝利」と戦績が並んだ画面 |
 
-Appleは**6.7インチと6.5インチで各3枚以上**を求める。上の2枚＋実機の3枚で足りる。
+Appleは**6.7インチと6.5インチで各3枚以上**を求める。上の3枚だけでも出せるが、
+スキルの発動の瞬間が1枚あるかないかで伝わり方が変わる。
