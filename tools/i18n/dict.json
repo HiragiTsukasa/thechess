@@ -704,5 +704,8 @@
  "マッチング": "Matchmaking",
  "対戦相手を探しています…": "Looking for an opponent…",
  "ランクマッチ ・ あなたは{0}": "Ranked · You are {0}",
- "相手の接続が切れました": "Your opponent disconnected"
+ "相手の接続が切れました": "Your opponent disconnected",
+ "その名前は使えません": "That name cannot be used",
+ "9:00 から": "Opens at 9:00",
+ "ランクマッチは {0}:00〜{1}:00 です": "Ranked runs {0}:00-{1}:00"
 }
