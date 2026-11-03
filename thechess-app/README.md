@@ -22,10 +22,26 @@ thechess-app/
 
 必要なもの … macOS / Xcode 15以降 / Node 18以降 / Apple Developer アカウント
 
+**順番が大事です。** アイコンの生成は `ios/` が出来てからでないと動きません
+（`@capacitor/assets` の書き込み先が既定で `ios/App` のため）。
+
 ```bash
 cd thechess-app
-npm run init          # npm install → cap add ios → cap sync
-npm run open          # Xcode が開く
+
+# ① iOSプロジェクトを作る（ここで ios/App が出来る）
+npm run init                            # npm install → cap add ios → cap sync
+
+# ② 用意したアイコンを置く
+#     resources/icon.png     1024×1024・透過なし
+#     resources/splash.png   2732×2732
+#    （1枚だけで済ませるなら resources/ ではなく assets/logo.png を置いて
+#      npx @capacitor/assets generate --ios --iconBackgroundColor '#0b0c0e' --splashBackgroundColor '#0b0c0e'）
+
+# ③ 各サイズを生成して ios/App へ書き込む
+npx @capacitor/assets generate --ios
+
+# ④ Xcode を開く
+npm run open
 ```
 
 Xcode 側で3つだけ触ります。
@@ -35,6 +51,17 @@ Xcode 側で3つだけ触ります。
 3. **Signing & Capabilities → ＋ Capability** … `In-App Purchase` を追加
 
 これで実機にビルドすれば動きます。`www/` を直したあとは `npm run sync` だけで反映されます。
+
+### 実機で必ず確認すること
+
+ブラウザでは検証できない3つ。
+
+1. **購入** … 「ふつう」か「つよい」を押す → 購入パネル → 購入が通り、鍵が外れるか
+2. **購入を復元** … アプリを削除して入れ直し、ホームの「購入を復元」で戻るか
+3. **部屋対戦** … 2台で、片方が「キーを作成」（製品版が必要）、もう片方が「キーを入力」で繋がるか
+
+1 と 2 は `www/iap.js` を `deviceready` 待ちに直した効果の確認でもあります。3 は
+`capacitor.config.json` から `limitsNavigationsToAppBoundDomains` を外した影響の確認です。
 
 ## 難易度
 
