@@ -4615,18 +4615,28 @@ function closeRank(){pClose();}
 /* ══ ランクマッチの相手の表示名 ═══════════════════════════
    対人マッチングが入るまでの仮の相手。CPU とだけ出ると味気ないので
    それらしい名前を振る。実在の人物を指さないよう、語の組み合わせで作る。 */
-const RKN_A=[TR('白'),TR('黒'),TR('銀'),TR('紅'),TR('蒼'),TR('翠'),TR('金'),TR('月'),TR('霜'),TR('雷'),TR('灰'),TR('紫')];
-const RKN_B=[TR('の'),TR('・')];
-const RKN_C=[TR('騎士'),TR('塔'),TR('司教'),TR('女王'),TR('歩兵'),TR('王'),TR('刃'),TR('影'),TR('鐘'),TR('旅人'),TR('賢者'),TR('狼')];
-const RKN_E=['Alder','Brent','Caldis','Doran','Ewan','Fenn','Garin','Halle','Iveth','Joren',
-             'Kestrel','Lyra','Moran','Nyle','Orin','Perrin','Quill','Rowan','Sable','Thorne',
-             'Ulric','Vance','Wren','Yarrow','Zel'];
-const RKN_S=['','','','7','12','21','33','64','88','99','_x','___'];
+/* 相手の表示名。対人マッチングが入るまでの仮の相手。
+   実在の人物を指さないよう語の組み合わせで作る。文字種を混ぜているのは、
+   実際のプレイヤー名欄がカタカナ・ひらがな・漢字・ローマ字の雑多な並びになるため。
+   英語ではローマ字のプールだけを使う（和名の「の」が混ざると読めないので）。 */
+const RKN_KATA=['ユウキ','ハルト','ソウタ','レン','カイト','ツバサ','アオイ','ヒナ','リク','ミナト',
+                'ナギ','ソラ','ユイ','ハルカ','シン','コウ','リョウ','マコト','アサヒ','ノゾミ'];
+const RKN_HIRA=['ひなた','あおい','つばさ','さくら','かえで','ゆうき','みなと','そら','なぎ','ほたる'];
+const RKN_KANJI=['疾風','夜空','無双','閃','零','白夜','紫電','蒼天','雷鳴','朧','焔','刃鳴','黎明','静寂'];
+const RKN_ROMA=['Yuki','Souta','Kaito','Ren','Haru','Sora','Nagi','Tsubasa','Aoi','Riku',
+                'Alder','Brent','Caldis','Doran','Ewan','Fenn','Garin','Halle','Joren','Kestrel',
+                'Lyra','Moran','Orin','Perrin','Quill','Rowan','Sable','Thorne','Ulric','Wren'];
+const RKN_SUF=['','','','','7','21','99','12','0','_','__','-','x','777','24'];
+const RKN_PRE=['','','','','','_','x'];
+const rkPick=a=>a[(Math.random()*a.length)|0];
 function rkOpName(){
- const r=Math.random();
- if(r<.45)return RKN_A[(Math.random()*RKN_A.length)|0]+RKN_B[(Math.random()*RKN_B.length)|0]+RKN_C[(Math.random()*RKN_C.length)|0];
- if(r<.9) return RKN_E[(Math.random()*RKN_E.length)|0]+RKN_S[(Math.random()*RKN_S.length)|0];
- return RKN_C[(Math.random()*RKN_C.length)|0]+RKN_S[(Math.random()*RKN_S.length)|0];
+ const en=(typeof TRLANG!=='undefined'&&TRLANG!=='ja');
+ if(en)return rkPick(RKN_PRE)+rkPick(RKN_ROMA)+rkPick(RKN_SUF);
+ const r=Math.random(),sf=rkPick(RKN_SUF);
+ if(r<.38)return rkPick(RKN_KATA)+sf;
+ if(r<.60)return rkPick(RKN_HIRA)+sf;
+ if(r<.80)return rkPick(RKN_KANJI)+sf;
+ return rkPick(RKN_PRE)+rkPick(RKN_ROMA)+sf;
 }
 
 /* リーダーボード */
