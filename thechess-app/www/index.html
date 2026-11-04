@@ -2507,12 +2507,18 @@ function cardOf(p){return tray.querySelector(`.pc[data-id="${p.id}"]`);}
 function banner(txt,foe){updateTotals();const a=$('trA'),b=$('trB');const mine=mode!=='pvp'?humanSide:'w';const act=turnSide;
   a.classList.toggle('act',(mode==='pvp'?'w':mine)===act);b.classList.toggle('act',(mode==='pvp'?'b':foeOf(mine))===act);}
 const fmt=n=>Math.max(0,Math.round(n)).toLocaleString('ja-JP');
+/* フォークは2体ぶんのダメージを先に確定させてから、1体ずつ演出する。
+   そのまま合計を出すと1発目で2発ぶん減って、結果が先に見えてしまう。
+   演出が追いつくまでは、この表で「見せかけのHP」を使う。 */
+let hpShow=null;
+const shHp=q=>hpShow&&hpShow.has(q)?hpShow.get(q):q.hp;
+const shAlive=q=>hpShow&&hpShow.has(q)?true:q.alive;
 function updateTotals(){if(!pieces.length)return;const top=mode==='pvp'?'w':humanSide,bot=foeOf(top);
   $('tlA').textContent=mode==='pvp'?TR('白'):TR('あなた');$('tlB').textContent=mode==='pvp'?TR('黒'):TR('相手');
-  for(const [side,bar,num] of [[top,'tbA','tnA'],[bot,'tbB','tnB']]){const all=pieces.filter(q=>q.side===side);const max=all.reduce((a,q)=>a+q.max,0);const cur=all.filter(q=>q.alive).reduce((a,q)=>a+Math.max(0,q.hp),0);
+  for(const [side,bar,num] of [[top,'tbA','tnA'],[bot,'tbB','tnB']]){const all=pieces.filter(q=>q.side===side);const max=all.reduce((a,q)=>a+q.max,0);const cur=all.filter(shAlive).reduce((a,q)=>a+Math.max(0,shHp(q)),0);
     const r=max?cur/max:0;const el=$(bar);el.style.width=(r*100)+'%';el.style.background=hpCol(r);scrambleNum($(num),cur);
     const k=all.find(q=>q.t==='K');const kg=$(bar==='tbA'?'tkA':'tkB');
-    if(kg)kg.style.width=(max&&k&&k.alive?Math.max(0,k.hp)/max*100:0)+'%';}}
+    if(kg)kg.style.width=(max&&k&&shAlive(k)?Math.max(0,shHp(k))/max*100:0)+'%';}}
 function scrambleNum(el,val){const prev=el.dataset.v!=null?+el.dataset.v:null;el.dataset.v=val;
   if(prev==null||val>=prev){el.textContent=fmt(val);el.classList.remove('scr');return;}
   const t0=performance.now();el.classList.add('scr');const len=String(Math.round(prev)).length;
@@ -3076,13 +3082,16 @@ async function perform0(p,m,foe){curActor=p;
 }
 async function playerMove(p,m){if(busy||over)return;if(m.attack)m.roll=rollDmg(m);if(m.fork)for(const h of m.hits)h.roll=rollDmg(h);if(mode==='online'){if(turnSide!==humanSide)return;sendMove(p,m);}await perform(p,m,false);}
 async function performFork(p,m,foe){try{return await performFork0(p,m,foe);}catch(e){console.error('fork failed',e);
-  try{hideTech();syncMeshes();updateTotals();restoreLights();timeScale=1;busy=false;chain=null;if(!over)nextTurn();}catch(e2){busy=false;}}}
+  try{hpShow=null;updateTotals();hideTech();syncMeshes();updateTotals();restoreLights();timeScale=1;busy=false;chain=null;if(!over)nextTurn();}catch(e2){busy=false;}}}
 async function performFork0(p,m,foe){curActor=p;
   for(const h of m.hits)if(h.roll==null)h.roll=rollDmg(h);
   if(foe){overviewShot(humanSide,p.mesh.position);await wait(.6);const bms=m.hits.map(h=>beam(p,h.attack,0xe0664a));await tween(.3,k=>bms.forEach(b=>b.material.opacity=.8*k));await wait(.6);bms.forEach(b=>scene.remove(b));}
   const u=make(p,m);recordStats(p,m,u);PREV.set(p.id,{f:u.f0,r:u.r0});
   /* 2体抜きでベアキングやキング撃破になることがある。通常の手と同じく演出の前に曲を落とす */
   if(u.ev.some(e=>e.kind==='bare'||(e.kill&&e.tgt&&e.tgt.t==='K')))bgmHush=1;
+  hpShow=new Map();                       /* 当たるまでは減らさない */
+  for(const h of m.hits){const e0=u.ev.find(e=>e.kind==='fork'&&e.tgt===h.attack);if(e0)hpShow.set(h.attack,e0.hp0);}
+  updateTotals();
   showTech(m.tags[0],TRF("{0}体をまとめて攻撃",m.hits.length));
   const home=p.mesh.position.clone();const s=p.side==='w'?1:-1;
   CAM.shot={pos:new THREE.Vector3(home.x+1.2*s,3,home.z+2.8*s),look:new THREE.Vector3(home.x,.4,home.z-1.2*s)};
@@ -3100,13 +3109,14 @@ async function performFork0(p,m,foe){curActor=p;
     hitSlow(crit?.45:kill?.35:.22,crit?.4:.3);CAM.shake=crit||kill?1:graze?.4:.7;CAM.fovKick=crit?10:6;
     const hitPos=new THREE.Vector3(lerp(contact.x,tp.x,.5),.7,lerp(contact.z,tp.z,.5));
     tgt.mesh.userData.mat.emissive.setRGB(.55,.42,.3);shock(hitPos,kill?3:2.2,crit?0xf3c86a:0xefe9dc);burst(hitPos,kill?24:14,sparkMat,4.5,.45,5,1);
-    b.shown=ev.hp1;drawBar(b);const card=cardOf(tgt);if(card){kick(card,'hurt');updCard(tgt);}updateTotals();
+    b.shown=ev.hp1;drawBar(b);if(hpShow)hpShow.delete(tgt);const card=cardOf(tgt);if(card){kick(card,'hurt');updCard(tgt);}updateTotals();
     tween(.9,k=>{b.lag=lerp(ev.hp0,ev.hp1,eIO(Math.max(0,(k-.35)/.65)));drawBar(b);});
     tween(.5,k=>{const f=(1-k)*.55;tgt.mesh.userData.mat.emissive.setRGB(f,f*.76,f*.55);});
     if(kill){SFX.crack();scene.remove(b.spr);if(ev.overkill){overkillBoom(tp,.55);obliterate(tgt,5);craterAt(tp);}else crumbleFly(tgt,dir,ev.hp0>=tgt.max);}
     else flinch(tgt,dir,h.roll).then(()=>scene.remove(b.spr));
     await tween(.34,k=>{p.mesh.position.lerpVectors(contact,home,eOut(k));p.mesh.position.y=Math.sin(k*Math.PI)*.25;lean(p.mesh,dir,.3*(1-k));});
     p.mesh.position.copy(home);lean(p.mesh,dir,0);await wait(kill?.5:.25);}
+  hpShow=null;updateTotals();
   await playEvents(p,u,foe);
   syncMeshes();await wait(.3);hideTech();
   if(!kingOf('w')||!kingOf('b')){const k=pieces.find(q=>q.t==='K'&&!q.alive);if(k){$('fin').textContent='Checkmate';finisher(k,new THREE.Vector3(0,0,-1));SFX.final();await wait(2.4);}return endGame(kingOf('w')?'w':'b');}
