@@ -3599,6 +3599,15 @@ const saveSess=v=>{try{v?localStorage.setItem('nc_sess',JSON.stringify(v)):local
 const loadSess=()=>{try{return JSON.parse(localStorage.getItem('nc_sess')||'null');}catch(e){return null;}};
 /* 「オンライン」を押せるようにするのは、通信層を読んだあと（下の netOn の定義より後） */
 function lobbyMsg(t,busy){const e=$('lobbyMsg');e.textContent=t||'';e.classList.toggle('busy',!!busy);}
+/* 速ければ何も出さない。遅いときだけ出す。
+   一瞬だけ出て消える文字は、読めないうえにちらつくだけなので。
+   そのあいだボタンは押せなくする（二重に部屋を作らせない）。 */
+let lobbyT=0;
+function lobbyWork(on,t){
+ clearTimeout(lobbyT);lobbyT=0;
+ for(const id of ['mkRoom','joinBtn','codeIn']){const b=$(id);if(b)b.disabled=!!on;}
+ if(on){lobbyMsg('');lobbyT=setTimeout(()=>lobbyMsg(t,1),600);}
+ else lobbyMsg('');}
 function openLobby(kind){$('title').classList.add('hide');$('lobby').classList.remove('hide');$('lobbyMain').classList.remove('hide');$('lobbyWait').classList.add('hide');lobbyMsg('');
   const L=$('lobby');L.classList.remove('jn','mk');
   if(kind==='join'){L.classList.add('jn');}else if(kind==='mk'){L.classList.add('mk');}
@@ -3973,16 +3982,16 @@ function netStart(){
 /* ---- 部屋をつくる ---- */
 async function createRoom(){
   if(!netOn()){lobbyMsg(TR('いまは部屋を作れません'));return;}
-  lobbyMsg(TR('部屋を準備中…'),1);rmReset();
-  try{await fbAuth();}catch(e){lobbyMsg(TR('通信できませんでした'));return;}
+  lobbyWork(1,TR('部屋を準備中…'));rmReset();
+  try{await fbAuth();}catch(e){lobbyWork(0);lobbyMsg(TR('通信できませんでした'));return;}
   let code=null;
   for(let i=0;i<8&&!code;i++){
     const c=String(1000+Math.floor(Math.random()*9000));
     if(await rmHost(c,{hn:nameSafe(RKS.name),hr:RKS.rate|0}))code=c;
   }
+  lobbyWork(0);
   if(!code){lobbyMsg(TR('キーを作れませんでした'));return;}
   ON.mode='rm';ON.code=code;ON.side='w';ON.moves=[];ON.applied=0;
-  lobbyMsg('');
   $('lobbyMain').classList.add('hide');$('lobbyWait').classList.remove('hide');$('waitCode').textContent=code;
   const g=await rmHostWait(180000);
   if(!g){lobbyMsg(TR('相手が来ませんでした'));rmReset();return;}
@@ -3993,9 +4002,10 @@ async function joinRoom(code){
   code=String(code||'').trim();
   if(!/^\d{4}$/.test(code)){lobbyMsg(TR('4桁のキーを入れてください'));return;}
   if(!netOn()){lobbyMsg(TR('いまは入れません'));return;}
-  lobbyMsg(TR('入室中…'));rmReset();
-  try{await fbAuth();}catch(e){lobbyMsg(TR('通信できませんでした'));return;}
+  lobbyWork(1,TR('入室中…'));rmReset();
+  try{await fbAuth();}catch(e){lobbyWork(0);lobbyMsg(TR('通信できませんでした'));return;}
   const r=await rmGuest(code,{gn:nameSafe(RKS.name),gr:RKS.rate|0});
+  lobbyWork(0);
   if(r.err==='none'){lobbyMsg(TR('そのキーの部屋は見つかりません'));return;}
   if(r.err==='full'){lobbyMsg(TR('その部屋はもう対戦中です'));return;}
   if(r.err==='deny'){lobbyMsg(TR('その部屋には入れません'));return;}   /* 403。404と分けて出す */
