@@ -1803,7 +1803,7 @@ function finisher(k,dir){
 
 // ---- audio (synth) ----
 let AC=null,NB=null;
-function audio(){setTimeout(()=>voPreload&&voPreload(),50);setTimeout(()=>{try{sbLoad();}catch(e){}},80);if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();NB=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;}catch(e){}}if(AC&&!AC.__st){AC.__st=1;try{AC.onstatechange=()=>{if(AC.state==='running'&&typeof bgmRedo==='function')bgmRedo();};}catch(e){}}
+function audio(){setTimeout(()=>voPreload&&voPreload(),50);setTimeout(()=>{try{sbLoad();}catch(e){}},80);if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();AC.onstatechange=()=>{try{if(AC.state!=='running')bgmHidden=1;}catch(e){}};NB=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;}catch(e){}}if(AC&&!AC.__st){AC.__st=1;try{AC.onstatechange=()=>{if(AC.state==='running'&&typeof bgmRedo==='function')bgmRedo();};}catch(e){}}
  if(AC&&AC.state!=='running')AC.resume().then(()=>{try{bgmRedo();}catch(e){}},()=>{});}
 function tone(f,d,type,g,f2){if(!AC||!seOn())return;const t=AC.currentTime,o=AC.createOscillator(),a=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);a.gain.setValueAtTime(g,t);a.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(a).connect(AC.destination);o.start(t);o.stop(t+d+.02);}
 function noise(d,f,f2,g,type){if(!AC||!seOn())return;const t=AC.currentTime,s=AC.createBufferSource(),fl=AC.createBiquadFilter(),a=AC.createGain();s.buffer=NB;fl.type=type||'bandpass';fl.frequency.setValueAtTime(f,t);if(f2)fl.frequency.exponentialRampToValueAtTime(f2,t+d);a.gain.setValueAtTime(g,t);a.gain.exponentialRampToValueAtTime(.001,t+d);s.connect(fl).connect(a).connect(AC.destination);s.start(t);s.stop(t+d+.02);}
@@ -3392,8 +3392,18 @@ function bgmWant(){
  if(pieces.some(q=>q.t==='K'&&(q.bare||q.bareDone)))return 'bare';  /* 一度ベアキングになったら、終わった後もこの曲のまま */
  if(ranked)return 'ranked';
  return 'battle';}
+let bgmTryAt=0;
 function bgmTick(now){
  if(now-bgmAt<350)return;bgmAt=now;
+ /* iOS は電話・他アプリ・コントロールセンターで AudioContext を止める。
+    visibilitychange が来ない止まり方もあるので、イベントに頼らず毎tickで状態を見る。
+    止まっていたら resume を叩き、running に戻った最初のtickで鳴らし直す。 */
+ if(AC){
+  if(AC.state!=='running'){bgmHidden=1;
+   if(now-bgmTryAt>1000){bgmTryAt=now;try{AC.resume();}catch(e){}}
+   return;}
+  if(bgmHidden)bgmRedo();
+ }
  try{
   const w=bgmWant();
   /* ベアキング曲は3分あってデコードに1秒以上かかる。駒が残り少なくなった時点で先に読む */
@@ -3413,7 +3423,6 @@ function bgmTick(now){
    曲はループ先頭から鳴り直すが、鳴らないよりはいい。 */
 let bgmHidden=0;
 function bgmRedo(){
- if(!bgmHidden)return;
  bgmHidden=0;
  if(bgmNode){try{bgmNode.src.stop();}catch(e){}bgmLive.delete(bgmNode);}
  bgmNode=null;bgmKey=null;bgmAt=0;      /* 次の tick で鳴らし直す */
