@@ -8,3 +8,6 @@ thechess-app/node_modules/
 
 # i18n の中間生成物（tools/i18n で作り直せる）
 thechess-app/www/index.html.i18n
+
+# ストア用スクショの配布zip（store/ から作り直せる）
+store-screenshots.zip
