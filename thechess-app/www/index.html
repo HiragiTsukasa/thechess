@@ -482,7 +482,9 @@ body[data-picking] #title:not(.hide) ~ #hmBtn,body.pnl #title:not(.hide) ~ #hmBt
 .ldr{display:grid;grid-template-columns:40px 1fr auto;gap:9px;align-items:center;padding:3px 6px;border-radius:10px}
 .ldr canvas{display:block}
 .ldr.me{background:rgba(201,164,92,.1);border:1px solid rgba(201,164,92,.4);padding:5px 6px}
-.ldr b{display:block;font-family:"Dela Gothic One",sans-serif;font-style:italic;font-size:12.5px}
+/* 名前は利用者が打つ文字で、同梱サブセットから外れることがある。
+   欠けたときの落ち先が近い書体になるよう、ここは明朝のままにする。 */
+.ldr b{display:block;font-family:"Zen Old Mincho",serif;font-weight:700;font-size:13px}
 .ldr small{font-size:8.5px;color:var(--sub);font-family:"IBM Plex Mono",monospace}
 .ldr .now{font-style:normal;font:700 9px "IBM Plex Mono",monospace;color:#121417;background:var(--brass);border-radius:6px;padding:3px 7px}
 
