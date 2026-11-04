@@ -462,7 +462,12 @@ body[data-picking] #title:not(.hide) ~ #hmBtn,body.pnl #title:not(.hide) ~ #hmBt
 .ldme b{font-size:11px;letter-spacing:.14em;color:var(--brass)}
 .ldme span{font-size:15px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 .ldme small{font-size:11px;color:var(--sub)}
-#ldList{display:flex;flex-direction:column;gap:2px}
+#ldList{display:flex;flex-direction:column;gap:2px;
+ /* 100行を並べてもパネルは伸びない。ここだけ縦に送る */
+ max-height:calc(100vh - 272px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+ touch-action:pan-y;overscroll-behavior:contain;padding-right:2px}
+#ldList::-webkit-scrollbar{width:4px}
+#ldList::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:3px}
 .ldr{display:grid;grid-template-columns:40px 1fr auto;gap:9px;align-items:center;padding:3px 6px;border-radius:10px}
 .ldr canvas{display:block}
 .ldr.me{background:rgba(201,164,92,.1);border:1px solid rgba(201,164,92,.4);padding:5px 6px}
