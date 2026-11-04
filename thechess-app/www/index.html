@@ -3479,6 +3479,7 @@ function openLobby(kind){$('title').classList.add('hide');$('lobby').classList.r
   $('roomsWrap').classList.add('hide');}
 function closeLobby(){$('lobby').classList.add('hide');}
 function beginOnline(r){
+  bgmHush=0;                       /* 直前の対局で黙らせたままオンラインに入ると、ずっと無音になる */
   mode='online';humanSide=ON.side;setup();$('title').classList.add('hide');$('result').classList.remove('on');
   const mv=r.moves||[];
   for(const rec of mv){const pm=findMove(rec);if(!pm)break;if(pm[1].attack&&rec.d!=null)pm[1].roll=rec.d;const uu=make(pm[0],pm[1]);if(!kingOf('w')||!kingOf('b'))break;
@@ -5331,6 +5332,7 @@ $('rkGo').addEventListener('click',()=>{audio();
  if(!rankOpen()){toast(TRF("ランクマッチは {0}:00〜{1}:00 です",RK_OPEN,RK_CLOSE));return;}
  rkStart();});   /* ランクは回数でなくレートの参加費で入る */
 async function rkStart(){
+ bgmHush=0;                        /* マッチング中とVS演出中に曲を戻す */
  const t=tierOf(RKS.rate);
  const fem=$('rkPanel').classList.contains('hide')?null:$('rkEm');   /* パネルが出ている時だけ飛ばす */
  const me={name:RKS.name||TR('プレイヤー'),ri:t.ri,ti:t.ti,rate:RKS.rate,side:TR('白')};
