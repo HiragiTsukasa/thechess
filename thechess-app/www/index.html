@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>The Chess: Groundbreaking</title>
 
 <style>
@@ -20,7 +20,8 @@
 @font-face{font-family:"IBM Plex Mono";font-style:normal;font-weight:700;font-display:swap;
  src:url(fonts/mono700.woff2) format('woff2')}
 /* アプリ用：ゴムバンド・長押しメニュー・二本指ズームを殺す */
-html,body{overscroll-behavior:none;-webkit-touch-callout:none}
+html,body{overscroll-behavior:none;-webkit-touch-callout:none;
+ touch-action:manipulation}   /* ダブルタップでズームさせない。子の none / pan-y はそのまま効く */
 </style>
 <style>
 :root{--bg:#121417;--panel:#1a1d21;--card:#20242a;--line:#2d3238;--ink:#efe9dc;--sub:#9aa0a6;--brass:#c9a45c;--red:#d0604a;--dead:#3a3f45}
@@ -3469,6 +3470,11 @@ function bgmRedo(){
  if(bgmNode){try{bgmNode.src.stop();}catch(e){}bgmLive.delete(bgmNode);}
  bgmNode=null;bgmKey=null;bgmAt=0;      /* 次の tick で鳴らし直す */
 }
+/* iOS はダブルタップとピンチで勝手に拡大する。盤も UI も固定なので、どちらも殺す。
+   一度ズームすると戻す手段が無く、画面が壊れたままになる。 */
+for(const ev of ['gesturestart','gesturechange','gestureend'])
+ document.addEventListener(ev,e=>e.preventDefault(),{passive:false});
+document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 document.addEventListener('visibilitychange',()=>{
  if(document.visibilityState!=='visible'){bgmHidden=1;return;}
  if(!AC){bgmHidden=0;return;}
