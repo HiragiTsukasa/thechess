@@ -3047,7 +3047,7 @@ async function perform0(p,m,foe){curActor=p;
   if(mateNm){ST.mate=mateNm;bgmHush=1;}   /* チェックメイトの演出に入る前に曲を落とす */
   const pre=pieces.map(q=>({q,f:q.f,r:q.r,t:q.t}));
   const u=make(p,m);   // commit state; u.ev describes what happened
-  if(u.ev.some(e=>e.kind==='bare'))bgmHush=1;   /* 最後の1体が砕けるところから無音にする */
+  if(u.ev.some(e=>e.kind==='bare'||(e.kill&&e.tgt&&e.tgt.t==='K')))bgmHush=1;   /* 最後の1体が砕けるところ、王が落ちるところから無音にする */
   if(window.__T)__T.evlog.push({tags,ev:u.ev.map(e=>e.kind+(e.tgt?':'+e.tgt.t+(e.dmg!=null?'-'+e.dmg:'')+(e.amount!=null?'+'+e.amount:'')+(e.kill?'!':''):'')),extra:!!u.extra,disc:!!u.disc2,dc:!!u.dcheck});
   // --- visuals use pre-move positions (meshes not yet synced)
   if(m.castle)await castleSeq(p,m);
@@ -3081,6 +3081,8 @@ async function performFork0(p,m,foe){curActor=p;
   for(const h of m.hits)if(h.roll==null)h.roll=rollDmg(h);
   if(foe){overviewShot(humanSide,p.mesh.position);await wait(.6);const bms=m.hits.map(h=>beam(p,h.attack,0xe0664a));await tween(.3,k=>bms.forEach(b=>b.material.opacity=.8*k));await wait(.6);bms.forEach(b=>scene.remove(b));}
   const u=make(p,m);recordStats(p,m,u);PREV.set(p.id,{f:u.f0,r:u.r0});
+  /* 2体抜きでベアキングやキング撃破になることがある。通常の手と同じく演出の前に曲を落とす */
+  if(u.ev.some(e=>e.kind==='bare'||(e.kill&&e.tgt&&e.tgt.t==='K')))bgmHush=1;
   showTech(m.tags[0],TRF("{0}体をまとめて攻撃",m.hits.length));
   const home=p.mesh.position.clone();const s=p.side==='w'?1:-1;
   CAM.shot={pos:new THREE.Vector3(home.x+1.2*s,3,home.z+2.8*s),look:new THREE.Vector3(home.x,.4,home.z-1.2*s)};
@@ -3349,7 +3351,16 @@ function sbDec(ab){return new Promise(r=>{let d=false;const ok=b=>{if(!d){d=true
  try{const p=AC.decodeAudioData(ab,ok,()=>ok(null));if(p&&p.then)p.then(ok,()=>ok(null));}catch(e){ok(null);}
  setTimeout(()=>ok(null),8000);});}
 function sbLoad(){if(sbStarted||!AC)return;sbStarted=true;
- Object.keys(SB64).forEach(k=>{sbDec(sbRaw(SB64[k])).then(b=>{if(b)SBUF[k]=b;});});}
+ Object.keys(SB64).forEach(k=>{if(SBUF[k])return;sbDec(sbRaw(SB64[k])).then(b=>{if(b)SBUF[k]=b;});});}
+/* 中断した AudioContext の上で走っていたデコードは、決着せずに止まることがある。
+   そのまま放っておくと SE は合成音に落ち、ボイスは 'loading' のまま一生鳴らない。
+   取りこぼしを捨てて、読み直す。 */
+function audioReload(){
+ if(!AC)return;
+ for(const n in voBuf)if(voBuf[n]==='loading')delete voBuf[n];
+ voLoading=false;sbStarted=false;
+ try{sbLoad();}catch(e){}
+ try{voPreload&&voPreload();}catch(e){}}
 function seOn(){return typeof RKS==='undefined'||RKS.se!==false;}
 function voOn(){return typeof RKS==='undefined'||RKS.vo!==false;}
 
@@ -3453,9 +3464,9 @@ function shotFrame(now){
    さらに厄介なのが「動いているふりをして止まっている」状態で、
    resume は通り state も running になるのに currentTime が進まない＝鳴らない。
    state だけ見ていては気づけないので、時計が進んだかどうかで判定する。 */
-let acFail=0,acReAt=-20000,acT=-1,acTAt=0;   /* 最初の作り直しは待たせない */
+let acFail=0,acReAt=-20000,acT=-1,acTAt=0,sbWatch=0;   /* 最初の作り直しは待たせない */
 function audioRebuild(){
- try{if(AC)AC.close();}catch(e){}
+ try{if(AC){const q=AC.close();if(q&&q.catch)q.catch(()=>{});}}catch(e){}
  AC=null;
  try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){AC=null;}
  if(!AC)return;
@@ -3466,11 +3477,14 @@ function audioRebuild(){
  bgmNode=null;bgmKey=null;bgmAt=0;bgmHidden=0;bgmLive.clear();voCur=null;
  acT=-1;acTAt=0;
  try{const q=AC.resume();if(q&&q.catch)q.catch(()=>{});}catch(e){}
+ try{audioReload();}catch(e){}
 }
 function audioWake(){
  try{
   if(!AC){audio();return;}
   if(AC.state!=='running'){const q=AC.resume();if(q&&q.catch)q.catch(()=>{});}
+  let n=0;for(const k in SBUF){n++;break;}
+  if(!n)audioReload();               /* 取りこぼしていたら読み直す */
  }catch(e){}
 }
 let bgmTryAt=0;
@@ -3488,6 +3502,10 @@ function bgmTick(now){
    if(acFail>=4&&now-acReAt>20000){acReAt=now;acFail=0;audioRebuild();}}
   return;}
  else{acFail=0;
+  /* SE が1つも読めていなければ読み直す（中断で取りこぼした場合） */
+  if(now-sbWatch>3000){sbWatch=now;
+   let n=0;for(const k in SBUF){n++;break;}
+   if(!n)try{audioReload();}catch(e){}}
   const ct=AC.currentTime;                    /* running でも時計が止まっていることがある */
   if(ct>acT+.01){acT=ct;acTAt=now;}
   else if(acTAt&&now-acTAt>700&&now-acReAt>20000){acReAt=now;audioRebuild();return;}
@@ -5939,7 +5957,7 @@ window.__RB={mkPiece};   /* ルールブックの iframe が実物の駒モデ�
 /* デバッグ用の窓。アプリ（capacitor://）では開かない。盤面を作り替えたり
    相手の駒を消したりできてしまうので、製品に窓を残さない。
    ブラウザで開いたときだけ使える（確認用のスクリプトはこれを使っている）。 */
-if(location.protocol!=='capacitor:')window.__G={net:()=>({mode:ON.mode,code:RM.code,host:RM.host,direct:RM.direct,rtOpen:RT.open,pc:RT.pc&&RT.pc.connectionState,ch:RT.ch&&RT.ch.readyState,seen:RM.seen,poll:!!RM.poll,side:ON.side,moves:ON.moves.length,rx:RT.rx,tx:RT.tx,last:RT.last,buf:RT.buf.length,hasCb:!!RM.onmove}),noDirect:v=>{RT.noDirect=!!v;},bgm:()=>({key:bgmKey,want:bgmWant(),hush:bgmHush,ac:AC&&AC.state,set:RKS.bgm,gain:bgmNode?+bgmNode.g.gain.value.toFixed(3):null,loop:bgmNode?[+bgmNode.src.loopStart.toFixed(4),+bgmNode.src.loopEnd.toFixed(4)]:null,bufs:Object.keys(BGM).filter(k=>BGM[k].buf),secs:+Object.keys(BGM).filter(k=>BGM[k].buf).reduce((x,k)=>x+BGM[k].buf.duration,0).toFixed(1),loading:Object.keys(BGM).filter(k=>BGM[k].loading),err:Object.keys(BGM).filter(k=>BGM[k].err).map(k=>k+': '+BGM[k].err)}),bgmSet:v=>{RKS.bgm=v;rkSave();bgmAt=0;},thin:(sd,keep)=>{let n=0;pieces.forEach(q=>{if(q.side===sd&&q.t!=='K'&&q.alive&&++n>(keep|0)){q.alive=false;q.hp=0;}});syncMeshes();},setBare:v=>{const k=pieces.find(q=>q.t==='K');k.bare=!!v;if(!v)pieces.forEach(q=>{q.bare=false;q.bareDone=false;});},setRanked:v=>{ranked=!!v;},toTitle:()=>{over=true;$('title').classList.remove('hide');},diag:()=>({frameN,last:+last.toFixed(1),busy,turn:turnSide,over,tw:tweens.length,ts:timeScale,ff,chain:!!chain,q:techQ.length,live:chainS.live.length,tws:tweens.map(w=>({d:w.d,t:+w.t.toFixed(2),fn:String(w.fn).slice(0,90)}))}),pzCount:()=>PUZZLES.length,pzTag:()=>PUZZLES[pzIdx]&&PUZZLES[pzIdx].tag,fx:()=>parts.length,ok:()=>({pierce:OK_PIERCE,diveY:OK_DIVE_Y}),okSet:(p,y)=>{if(p!=null)OK_PIERCE=+p;if(y!=null)OK_DIVE_Y=+y;},setPos:(list,side)=>{mode='puzzle';humanSide='w';pzEnded=true;$('pzBar').classList.remove('on');$('result').classList.remove('on');$('pzDone').classList.remove('on');puzzleSetup(list,side||'w');const t=$('title');t.classList.add('hide');t.classList.remove('leaving');CAM.shot=topShot();busy=true;setTimeout(()=>{busy=false;startHuman();},900);},startPuzzle:i=>startPuzzle(i),vo:()=>({loaded:Object.values(voBuf).filter(b=>b&&b!=='loading').length,cur:voCur&&{start:+voCur.start.toFixed(2),end:+voCur.end.toFixed(2),prio:voCur.prio},t:AC&&+AC.currentTime.toFixed(2)}),sd:()=>[stallN,sdStage],gmInfo:()=>({depth:gmDepthDone,nodes:gmNodes,ms:gmLastMs,maxd:GM_MAXD,budget:GM_MS}),sim:(lw,lb,maxP)=>{const snap=pieces.map(q=>({q,f:q.f,r:q.r,hp:q.hp,alive:q.alive,t:q.t,max:q.max,bare:q.bare,walked:q.walked,moved:q.moved,bonus:q.bonus}));let side='w',n=0,res='draw';
+if(location.protocol!=='capacitor:')window.__G={net:()=>({mode:ON.mode,code:RM.code,host:RM.host,direct:RM.direct,rtOpen:RT.open,pc:RT.pc&&RT.pc.connectionState,ch:RT.ch&&RT.ch.readyState,seen:RM.seen,poll:!!RM.poll,side:ON.side,moves:ON.moves.length,rx:RT.rx,tx:RT.tx,last:RT.last,buf:RT.buf.length,hasCb:!!RM.onmove}),noDirect:v=>{RT.noDirect=!!v;},bgm:()=>({key:bgmKey,want:bgmWant(),hush:bgmHush,se:Object.keys(SBUF).length,vo:Object.keys(voBuf).filter(k=>voBuf[k]&&voBuf[k]!=='loading').length,voStuck:Object.keys(voBuf).filter(k=>voBuf[k]==='loading').length,ac:AC&&AC.state,set:RKS.bgm,gain:bgmNode?+bgmNode.g.gain.value.toFixed(3):null,loop:bgmNode?[+bgmNode.src.loopStart.toFixed(4),+bgmNode.src.loopEnd.toFixed(4)]:null,bufs:Object.keys(BGM).filter(k=>BGM[k].buf),secs:+Object.keys(BGM).filter(k=>BGM[k].buf).reduce((x,k)=>x+BGM[k].buf.duration,0).toFixed(1),loading:Object.keys(BGM).filter(k=>BGM[k].loading),err:Object.keys(BGM).filter(k=>BGM[k].err).map(k=>k+': '+BGM[k].err)}),bgmSet:v=>{RKS.bgm=v;rkSave();bgmAt=0;},thin:(sd,keep)=>{let n=0;pieces.forEach(q=>{if(q.side===sd&&q.t!=='K'&&q.alive&&++n>(keep|0)){q.alive=false;q.hp=0;}});syncMeshes();},setBare:v=>{const k=pieces.find(q=>q.t==='K');k.bare=!!v;if(!v)pieces.forEach(q=>{q.bare=false;q.bareDone=false;});},setRanked:v=>{ranked=!!v;},toTitle:()=>{over=true;$('title').classList.remove('hide');},diag:()=>({frameN,last:+last.toFixed(1),busy,turn:turnSide,over,tw:tweens.length,ts:timeScale,ff,chain:!!chain,q:techQ.length,live:chainS.live.length,tws:tweens.map(w=>({d:w.d,t:+w.t.toFixed(2),fn:String(w.fn).slice(0,90)}))}),pzCount:()=>PUZZLES.length,pzTag:()=>PUZZLES[pzIdx]&&PUZZLES[pzIdx].tag,fx:()=>parts.length,ok:()=>({pierce:OK_PIERCE,diveY:OK_DIVE_Y}),okSet:(p,y)=>{if(p!=null)OK_PIERCE=+p;if(y!=null)OK_DIVE_Y=+y;},setPos:(list,side)=>{mode='puzzle';humanSide='w';pzEnded=true;$('pzBar').classList.remove('on');$('result').classList.remove('on');$('pzDone').classList.remove('on');puzzleSetup(list,side||'w');const t=$('title');t.classList.add('hide');t.classList.remove('leaving');CAM.shot=topShot();busy=true;setTimeout(()=>{busy=false;startHuman();},900);},startPuzzle:i=>startPuzzle(i),vo:()=>({loaded:Object.values(voBuf).filter(b=>b&&b!=='loading').length,cur:voCur&&{start:+voCur.start.toFixed(2),end:+voCur.end.toFixed(2),prio:voCur.prio},t:AC&&+AC.currentTime.toFixed(2)}),sd:()=>[stallN,sdStage],gmInfo:()=>({depth:gmDepthDone,nodes:gmNodes,ms:gmLastMs,maxd:GM_MAXD,budget:GM_MS}),sim:(lw,lb,maxP)=>{const snap=pieces.map(q=>({q,f:q.f,r:q.r,hp:q.hp,alive:q.alive,t:q.t,max:q.max,bare:q.bare,walked:q.walked,moved:q.moved,bonus:q.bonus}));let side='w',n=0,res='draw';
   while(n<maxP){cpuLevel=side==='w'?lw:lb;const c=cpuChoose(side);if(!c){res='nomove';break;}const [p0,m0]=c;if(m0.attack)m0.roll=rollDmg(m0);if(m0.fork)m0.hits.forEach(h=>h.roll=rollDmg(h));make(p0,m0,false);n++;if(!kingOf('w')){res='b';break;}if(!kingOf('b')){res='w';break;}side=side==='w'?'b':'w';}
   for(const s0 of snap)Object.assign(s0.q,{f:s0.f,r:s0.r,hp:s0.hp,alive:s0.alive,t:s0.t,max:s0.max,bare:s0.bare,walked:s0.walked,moved:s0.moved,bonus:s0.bonus});lastMove=null;lastMover={w:null,b:null};discBuff={w:null,b:null};cpuLevel='normal';return [res,n];},setLv:v=>{cpuLevel=v;},timeCpu:(side,n)=>{const out=[];for(const lv of ['easy','normal','hard']){cpuLevel=lv;const t=performance.now();const r=cpuChoose(side);out.push([lv,Math.round(performance.now()-t),r&&('abcdefgh'[r[0].f]+r[0].r+'>'+'abcdefgh'[r[1].f]+r[1].r)]);}cpuLevel='normal';return out;},barTest:(from,to)=>{const q=pieces.find(x=>x.alive);const b=hpBar(q);b.shown=from;b.lag=from;drawBar(b);b.shown=to;b.lag=to;drawBar(b);const out=[];const t0=performance.now();return new Promise(res=>{const iv=setInterval(()=>{drawBar(b);out.push(b.disp);if(performance.now()-t0>700){clearInterval(iv);scene.remove(b.spr);res(out);}},60);});},tapSq:sq=>uiTap({f:'abcdefgh'.indexOf(sq[0]),r:+sq[1]}),ui:()=>({sel:sel&&('abcdefgh'[sel.f]+sel.r),skill:uiSkill,pending:!!uiPending,runes:runeG.children.length}),tech:(n,s)=>showTech(n,s),aim(p,m){focus(p);openPad();setTimeout(()=>{choose(m);padInfo(m);},450);},set speed(v){dbgSpeed=v},pieces,get busy(){return busy},get over(){return over},get turn(){return turnSide},start,playerMove:(p,m)=>playerMove(p,m),movesOfT,cpuChoose,skillMoves,forkMove,get sel(){return sel}};
 })();
