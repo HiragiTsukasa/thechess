@@ -3435,18 +3435,34 @@ function shotFrame(now){
   try{const c=cpuChoose(humanSide);if(c)playerMove(c[0],c[1]);}catch(e){}
  }
 }
+/* 最終手段：AudioContext ごと作り直す。
+   中断から resume で戻らない個体があるため。古い context に属するバッファは
+   全部無効になるので、SE も声も BGM も読み直す。 */
+let acFail=0,acReAt=-20000;   /* 最初の1回は待たせない */
+function acRebuild(){
+ try{if(AC)AC.close();}catch(e){}
+ AC=null;NB=null;
+ bgmNode=null;bgmKey=null;bgmAt=0;bgmHidden=0;bgmLive.clear();
+ for(const k in BGM){BGM[k].buf=null;BGM[k].loading=false;BGM[k].fail=0;}
+ for(const k in SBUF)delete SBUF[k];
+ for(const k in voBuf)delete voBuf[k];
+ voCur=null;sbStarted=false;
+ try{audio();}catch(e){}            /* 新しい context を作り、SE と声を読み直す */
+}
 let bgmTryAt=0;
 function bgmTick(now){
  if(now-bgmAt<350)return;bgmAt=now;
  /* iOS は電話・他アプリ・コントロールセンターで AudioContext を止める。
     visibilitychange が来ない止まり方もあるので、イベントに頼らず毎tickで状態を見る。
     止まっていたら resume を叩き、running に戻った最初のtickで鳴らし直す。 */
- if(AC){
-  if(AC.state!=='running'){bgmHidden=1;
-   if(now-bgmTryAt>1000){bgmTryAt=now;try{AC.resume();}catch(e){}}
-   return;}
-  if(bgmHidden)bgmRedo();
- }
+ if(!AC){acFail=0;}
+ else if(AC.state!=='running'){bgmHidden=1;
+  if(now-bgmTryAt>1000){bgmTryAt=now;acFail++;
+   try{const q=AC.resume();if(q&&q.catch)q.catch(()=>{});}catch(e){}
+   /* 4秒叩いても戻らなければ context ごと作り直す（20秒に1回まで） */
+   if(acFail>=4&&now-acReAt>20000){acReAt=now;acFail=0;acRebuild();}}
+  return;}
+ else{acFail=0;if(bgmHidden)bgmRedo();}
  try{
   const w=bgmWant();
   /* ベアキング曲は3分あってデコードに1秒以上かかる。駒が残り少なくなった時点で先に読む */
@@ -3472,6 +3488,9 @@ function bgmRedo(){
 }
 /* iOS はダブルタップとピンチで勝手に拡大する。盤も UI も固定なので、どちらも殺す。
    一度ズームすると戻す手段が無く、画面が壊れたままになる。 */
+/* iOS は操作なしの resume を拒むことがある。どこを触っても復帰を試す。 */
+for(const ev of ['pointerdown','touchend'])
+ document.addEventListener(ev,()=>{try{if(!AC||AC.state!=='running')audio();}catch(e){}},{capture:true,passive:true});
 for(const ev of ['gesturestart','gesturechange','gestureend'])
  document.addEventListener(ev,e=>e.preventDefault(),{passive:false});
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
