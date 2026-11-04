@@ -1,0 +1,116 @@
+<title>Overkill Timing Bench</title>
+<style>
+  :root{
+    --bg:#0a0b0d; --panel:#141619; --line:#262a30;
+    --fg:#e9eaec; --dim:#9aa0a6; --brass:#d6a04a;
+    color-scheme: dark;
+  }
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:14px/1.5 "Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+       display:flex;flex-direction:column;overflow:hidden}
+  #stage{flex:1 1 auto;border:0;width:100%;background:#07080a;min-height:0}
+  #bar{flex:0 0 auto;background:var(--panel);border-top:1px solid var(--line);
+       padding-block:12px;
+       padding-left:max(16px,env(safe-area-inset-left,0px));
+       padding-right:max(16px,env(safe-area-inset-right,0px));
+       padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+  .row:last-child{margin-bottom:0}
+  button{appearance:none;border:1px solid var(--line);background:#1d2127;color:var(--fg);
+         font:inherit;font-weight:600;padding:9px 14px;border-radius:9px;cursor:pointer}
+  button:hover{border-color:var(--brass)}
+  button.go{background:var(--brass);border-color:var(--brass);color:#14100a}
+  label{display:flex;align-items:center;gap:8px;color:var(--dim);min-width:0}
+  label b{color:var(--fg);font-variant-numeric:tabular-nums;min-width:3.2em;text-align:right}
+  input[type=range]{accent-color:var(--brass);width:min(190px,42vw)}
+  select{background:#1d2127;color:var(--fg);border:1px solid var(--line);
+         border-radius:8px;padding:7px 9px;font:inherit}
+  .note{color:var(--dim);font-size:12px}
+  .note code{color:var(--brass)}
+</style>
+
+<iframe id="stage" src="game.html" allow="autoplay; fullscreen" title="The Chess"></iframe>
+
+<div id="bar">
+  <div class="row">
+    <button class="go" data-k="h">横から ・ クイーン</button>
+    <button class="go" data-k="v">上から ・ ナイト</button>
+    <button id="again">もう一度</button>
+    <label>速度
+      <select id="sp">
+        <option value="1">1x</option>
+        <option value="0.5">0.5x</option>
+        <option value="0.25" selected>0.25x</option>
+        <option value="0.12">0.12x</option>
+      </select>
+    </label>
+  </div>
+  <div class="row">
+    <label>横 OK_PIERCE
+      <input id="pz" type="range" min="0.2" max="1.4" step="0.02" value="0.62">
+      <b id="pzv">0.62</b>
+    </label>
+    <label>縦 OK_DIVE_Y
+      <input id="dy" type="range" min="0.9" max="3.0" step="0.05" value="1.55">
+      <b id="dyv">1.55</b>
+    </label>
+  </div>
+  <div class="row">
+    <span class="note">数字が<b>大きいほど早く</b>砕けます。気に入った値を教えてください、そのまま本体に入れます。</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  var f=document.getElementById('stage');
+  var G=function(){ try{ return f.contentWindow.__G; }catch(e){ return null; } };
+
+  var POS={
+    h:[['w','K','g1'],['w','Q','h1'],['w','R','a1'],['w','P','b2'],
+       ['b','K','e8'],['b','P','h7',{hp:8}],['b','P','g7'],['b','R','a8'],['b','N','c6']],
+    v:[['w','K','g1'],['w','N','g5'],['w','R','a1'],['w','P','b2'],
+       ['b','K','e8'],['b','P','h7',{hp:5}],['b','P','f7'],['b','R','a8'],['b','N','c6']]
+  };
+  var TYPE={h:'Q',v:'N'};
+  var last='h';
+
+  function speed(){ var g=G(); if(g) try{ g.speed=parseFloat(document.getElementById('sp').value); }catch(e){} }
+
+  function run(k){
+    var g=G(); if(!g) return;
+    last=k; speed();
+    try{ var d=f.contentWindow.document, ti=d.getElementById('title');
+      if(ti&&!ti.classList.contains('hide')){ var b=d.querySelector('#title button,#title .btn,#title a'); if(b) b.click(); } }catch(e){}
+    g.okSet(parseFloat(document.getElementById('pz').value),
+            parseFloat(document.getElementById('dy').value));
+    g.setPos(POS[k],'w');
+    setTimeout(function(){
+      var g2=G(); if(!g2) return;
+      var t=TYPE[k];
+      var p=g2.pieces.filter(function(q){return q.alive&&q.side==='w'&&q.t===t;})[0];
+      if(!p) return;
+      var ms=g2.movesOfT(p)||[];
+      var m=null;
+      for(var i=0;i<ms.length;i++){ if(ms[i].attack&&ms[i].attack.t==='P'){ m=ms[i]; break; } }
+      if(m) g2.playerMove(p,m);
+    },1600);
+  }
+
+  document.querySelectorAll('button[data-k]').forEach(function(b){
+    b.addEventListener('click',function(){ run(b.dataset.k); });
+  });
+  document.getElementById('again').addEventListener('click',function(){ run(last); });
+  document.getElementById('sp').addEventListener('change',speed);
+
+  function bind(id,out){
+    var el=document.getElementById(id), o=document.getElementById(out);
+    el.addEventListener('input',function(){
+      o.textContent=parseFloat(el.value).toFixed(2);
+      var g=G(); if(g) g.okSet(parseFloat(document.getElementById('pz').value),
+                               parseFloat(document.getElementById('dy').value));
+    });
+  }
+  bind('pz','pzv'); bind('dy','dyv');
+})();
+</script>
