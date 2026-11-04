@@ -72,7 +72,9 @@ button{font:inherit;color:inherit}
 #menu .st s{text-decoration:none;width:7px;height:7px;border-radius:50%;background:#5c9c74;flex:none}
 #menu .st.off s{background:var(--red)}
 #menu .st em{margin-left:auto;font-style:normal;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink)}
-#shotClk{position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--sat) + 62px);
+#shotClk{position:absolute;left:50%;transform:translateX(-50%);
+ top:calc(12px + env(safe-area-inset-top,0px) + 64px);   /* HPパネル（top:12・高さ55）の下。pzBar と同じ高さ */
+
   display:flex;align-items:center;gap:8px;z-index:6;pointer-events:none;
   background:rgba(8,9,11,.62);border:1px solid rgba(255,255,255,.1);border-radius:999px;
   padding:5px 12px 5px 10px;backdrop-filter:blur(6px)}
