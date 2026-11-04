@@ -3407,7 +3407,7 @@ function bgmWant(){
  if(!AC||!bgmOn())return null;
  const ti=$('title');if(ti&&!ti.classList.contains('hide'))return 'home';
  const lb=$('lobby');if(lb&&!lb.classList.contains('hide'))return 'home';
- if(bgmHush)return null;                 /* 演出のため意図的に無音 */
+ if(bgmHush||vsOn)return null;           /* 演出のため意図的に無音（マッチングとVS演出もここ） */
  if(mode==='puzzle')return 'battle';
  if(pieces.some(q=>q.t==='K'&&(q.bare||q.bareDone)))return 'bare';  /* 一度ベアキングになったら、終わった後もこの曲のまま */
  if(ranked)return 'ranked';
@@ -5410,10 +5410,13 @@ async function rkStart(){
  let r='done';
  vsOn=1;
  try{r=await VSFX.run(me,op,true,fem,()=>!ready&&performance.now()-hold0<20000);}catch(e){}
+
  vsOn=0;shotKey='';
- await finding;
- if(r==='cancel'){payFree=0;ranked=false;if(m)rmReset();
+ if(r==='cancel'){                     /* 探索の完了を待たずに戻す。待つと画面が固まって見える */
+  payFree=0;ranked=false;
+  finding.then(()=>{try{if(m)rmReset();}catch(e){}},()=>{});
   $('title').classList.remove('hide');openRank();return;}
+ await finding;
 
  if(m){                                          /* 対人で開始。接続は mmSearch の中で張ってある */
   ranked=true;resigned=false;payFree=0;
@@ -5580,7 +5583,8 @@ function rankName(p){const R=RKEM.RANKS[p.ri];return R.n+' '+RKEM.ROMAN[p.ti-1];
 function rankJP(p){return RKEM.RANKS[p.ri].jp;}
 function col(p){const m=RKEM.MAT[p.ri];return m&&m.b?m.b:'#c9a45c';}
 /* ── 1 探索中 ── */
-function drSearch(t){const cx=W/2,cy=H*.44;
+function drSearch(t,el){const cx=W/2,cy=H*.44;
+ const e=el==null?t:el;   /* 足踏みで巻き戻す t とは別に、実際の経過秒 */
  txt(TR('ランクマッチ'),cx,H*.1,15,'#c9a45c',1,1);
  for(let i=0;i<3;i++){const q=((t*.5+i/3)%1);
   g.save();g.globalAlpha=(1-q)*.5;g.strokeStyle='#c9a45c';g.lineWidth=1.6;
@@ -5588,9 +5592,9 @@ function drSearch(t){const cx=W/2,cy=H*.44;
  if(performance.now()>=EMH){const e=bake(ME,86);g.save();g.globalAlpha=.95;
   g.drawImage(e.cv,cx-e.W/2,cy-e.H/2,e.W,e.H);g.restore();}
  txt(TR('対戦相手を探しています'),cx,H*.64,13,'#efe9dc',1);
- const sec=Math.floor(t)%60,mm=('0'+Math.floor(t/60)).slice(-2),ss=('0'+sec).slice(-2);
+ const sec=Math.floor(e)%60,mm=('0'+Math.floor(e/60)).slice(-2),ss=('0'+sec).slice(-2);
  txt(mm+':'+ss,cx,H*.70,26,'#efe9dc',1,0);
- const band=Math.min(400,120+Math.floor(t)*40);
+ const band=Math.min(400,120+Math.floor(e)*40);
  txt(TR('レート ')+(ME.rate-band).toLocaleString()+' 〜 '+(ME.rate+band).toLocaleString(),cx,H*.755,11,'#9aa0a6',1);
  g.save();g.globalAlpha=.9;g.strokeStyle='#2d3238';g.lineWidth=1;rr(W*.5-70,H*.82,140,42,11);g.stroke();g.restore();
  txt(TR('キャンセル'),cx,H*.82+21,13,'#9aa0a6',1);}
@@ -5722,7 +5726,7 @@ function cue(t){if(!act)return;
 function paint(t){g.clearRect(0,0,W,H);
  if(!act)return;
  if(act.full){
-  if(t<T_SEARCH){scrim(cl(t/.35,0,1)*SCRIM);drSearch(t);return;}
+  if(t<T_SEARCH){scrim(cl(t/.35,0,1)*SCRIM);drSearch(t,(performance.now()-act.real0)/1000);return;}
   if(t<T_SEARCH+T_TR){scrim(SCRIM);drTrans(t-T_SEARCH);return;}
   const u=VS0+(t-T_SEARCH-T_TR),out=cl((u-(T_VS+T_CNT-.5))/.5,0,1);
   scrim(SCRIM*(1-out));                       /* VS はそのまま残し、上にカウントを重ねる */
@@ -5795,7 +5799,7 @@ function fly(src){                       /* ランクパネルのエンブレム
  }catch(e){EMH=0;}}
 function run(me,op,full,fromEm,hold){ensure();ME=me;OP=op;SPK.length=0;lastT2=0;
  fit();cv.style.display='block';EMH=0;if(fromEm)fly(fromEm);
- act={t0:performance.now(),full:full!==false,d:{},hold:hold||null};
+ act={t0:performance.now(),real0:performance.now(),full:full!==false,d:{},hold:hold||null};
  raf=requestAnimationFrame(frame);
  return new Promise(r=>{fin=r;});}
 return {run,stop};})();
