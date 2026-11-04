@@ -2915,7 +2915,7 @@ async function bareSeq(ev){const K=ev.tgt;const kp=K.mesh.position.clone();busy=
   const hb=hpBar(K);hb.shown=ev.hp0;hb.lag=ev.hp0;drawBar(hb);hb.spr.position.copy(kp).setY(barY('K')*1.35+.2);hb.shown=ev.hp1;tween(.7,k=>{hb.lag=lerp(ev.hp0,ev.hp1,eIO(k));drawBar(hb);});updateTotals();
   await wait(1.6);scene.remove(hb.spr);
   tween(.6,k=>{halo.material.opacity=.9*(1-k);}).then(()=>scene.remove(halo));
-  tween(1,k=>{hemi.intensity=baseLight.h*(.55+.45*k);key.intensity=baseLight.k*(.65+.35*k);});K.bareShown=true;await wait(.4);}
+  tween(1,k=>{hemi.intensity=baseLight.h*(.55+.45*k);key.intensity=baseLight.k*(.65+.35*k);});bgmHush=0;K.bareShown=true;await wait(.4);}   /* ここからベアキング曲 */
 async function bareRegen(ev){const K=ev.tgt;const kp=K.mesh.position.clone();
   for(let i=0;i<10;i++){const o=new THREE.Mesh(new THREE.SphereGeometry(.03,6,4),new THREE.MeshBasicMaterial({color:BK_R2,transparent:true,blending:THREE.AdditiveBlending}));scene.add(o);const a0=Math.random()*6.3,rr=.3+Math.random()*.2;
     tween(.9,k=>{o.position.set(kp.x+Math.cos(a0+k*6)*rr,.2+k*1.6,kp.z+Math.sin(a0+k*6)*rr);o.material.opacity=1-k;}).then(()=>scene.remove(o));}
@@ -3003,9 +3003,10 @@ async function perform0(p,m,foe){curActor=p;
   if(m.attack&&m.roll==null)m.roll=rollDmg(m);
   const ek=kingOf(foeOf(p.side));
   const mateNm=m.attack&&m.attack===ek&&m.roll>=ek.hp?mateName(p,ek):null;
-  if(mateNm)ST.mate=mateNm;
+  if(mateNm){ST.mate=mateNm;bgmHush=1;}   /* チェックメイトの演出に入る前に曲を落とす */
   const pre=pieces.map(q=>({q,f:q.f,r:q.r,t:q.t}));
   const u=make(p,m);   // commit state; u.ev describes what happened
+  if(u.ev.some(e=>e.kind==='bare'))bgmHush=1;   /* 最後の1体が砕けるところから無音にする */
   if(window.__T)__T.evlog.push({tags,ev:u.ev.map(e=>e.kind+(e.tgt?':'+e.tgt.t+(e.dmg!=null?'-'+e.dmg:'')+(e.amount!=null?'+'+e.amount:'')+(e.kill?'!':''):'')),extra:!!u.extra,disc:!!u.disc2,dc:!!u.dcheck});
   // --- visuals use pre-move positions (meshes not yet synced)
   if(m.castle)await castleSeq(p,m);
@@ -3154,7 +3155,7 @@ function puzzleSetup(list,side,ep){for(const q of pieces)if(q.mesh)scene.remove(
   lastMove=null;lastMover={w:null,b:null};discBuff={w:null,b:null};chain=null;stallN=0;sdStage=0;sdAdd=0;resetStats();turnSide=side||'w';turnNo=1;over=false;busy=false;sel=null;restoreLights();hideTech();
   if(ep){const q=pieces.find(x=>x.side==='b'&&x.t==='P'&&x.r===5);if(q)lastMove={p:q,fr:7,tr:5};} // the black pawn has just stepped two squares
   syncMeshes();}
-function startPuzzle(i){const P=PUZZLES[i];if(!P)return;pzIdx=i;pzEnded=false;leaveOnline();mode='puzzle';humanSide='w';
+function startPuzzle(i){const P=PUZZLES[i];if(!P)return;bgmHush=0;pzIdx=i;pzEnded=false;leaveOnline();mode='puzzle';humanSide='w';
   rbHide();$('result').classList.remove('on');$('pzDone').classList.remove('on');
   puzzleSetup(P.pos,'w',P.ep);$('pzBar').innerHTML=TRF("<b>{0} ・ {1}</b><span>{2}</span>",P.tag,P.t,P.g);$('pzBar').classList.add('on');
   const t=$('title');if(!t.classList.contains('hide')){t.classList.add('leaving');setTimeout(()=>{t.classList.add('hide');t.classList.remove('leaving');},650);}
@@ -3215,7 +3216,7 @@ function setup(){preloadPortraits();
 }
 function syncMeshes(){for(const p of pieces){if(p.mesh&&p.mesh.userData.t!==p.t){scene.remove(p.mesh);p.mesh=mkPiece(p.t,p.side);p.mesh.userData.t=p.t;scene.add(p.mesh);}
   p.mesh.position.set(X(p.f),0,Z(p.r));p.mesh.visible=p.alive;p.mesh.quaternion.identity();p.mesh.scale.setScalar(.82);}}
-function endGame(winner,quick){
+function endGame(winner,quick){bgmHush=1;
   if(mode==='puzzle'){over=true;busy=false;return puzzleEnd();}
   over=true;busy=false;if(mode==='online'&&!quick)finishOnline(winner);
   const showRes=()=>{
@@ -3233,7 +3234,7 @@ function endGame(winner,quick){
       setTimeout(()=>{try{rkResult(winner===humanSide);}catch(e){}},420);
   },winner&&!quick&&!byJudge?3200:600);           /* 判定は撃破演出が無いので待たせない */
 }
-const start0=function(md){preloadPortraits();leaveOnline();mode=md;humanSide='w';setup();$('result').classList.remove('on');$('pzBar').classList.remove('on');$('pzDone').classList.remove('on');
+const start0=function(md){bgmHush=0;preloadPortraits();leaveOnline();mode=md;humanSide='w';setup();$('result').classList.remove('on');$('pzBar').classList.remove('on');$('pzDone').classList.remove('on');
   const t=$('title');
   if(!t.classList.contains('hide')){ // from the title: fade the menu out while the orbiting board glides into the playing view
     t.classList.add('leaving');CAM.shot=topShot();busy=true;
@@ -3282,11 +3283,12 @@ let lvLockRefresh=()=>{};   /* 3択の鍵表示を更新する。中身は下の
   $('onlineBtn').addEventListener('click',()=>{if(pick)return;audio();enter('on',ONM.map(l=>l[1]));});
   $('lvBack').addEventListener('click',()=>{audio();leave();});}
 $('again').addEventListener('click',()=>{
+ bgmHush=0;
  if(ranked){                                   /* ランクは回数を使わず、マッチングからやり直す */
   $('result').classList.remove('on');ranked=false;over=true;busy=true;rkStart();return;}
  if(mode==='online'){leaveOnline();$('result').classList.remove('on');openLobby();return;}
  start(mode);});
-$('toTitle').addEventListener('click',()=>{leaveOnline();$('result').classList.remove('on');$('title').classList.remove('hide');});
+$('toTitle').addEventListener('click',()=>{bgmHush=0;leaveOnline();$('result').classList.remove('on');$('title').classList.remove('hide');});
 function menuHide(soft){const m=$('menu');if(!m.classList.contains('on'))return;
  clearTimeout(menuHide._t);
  if(!soft){m.classList.remove('on','out');return;}
@@ -3323,6 +3325,9 @@ const BGM={
 };
 const BGM_FADE=.9,BGM_KEEP=240;      /* 入れ替えのフェード秒／デコード済みで残す合計秒数。通常戦闘曲とベアキング曲が同時に収まる値 */
 let bgmKey=null,bgmNode=null,bgmAt=0;
+/* 演出のあいだ曲を黙らせる。ベアキング確定の演出中と、キング撃破〜リザルトまで。
+   bgmWant がここを見て null を返すので、フェードアウトして無音になる。 */
+let bgmHush=0;
 const bgmLive=new Map();             /* まだ音を出しているノード → 曲。フェード中の曲を捨てないため */
 function bgmOn(){try{return RKS.bgm!==false;}catch(e){return true;}}
 function bgmSweep(all){
@@ -3370,6 +3375,7 @@ function bgmWant(){
  if(!AC||!bgmOn())return null;
  const ti=$('title');if(ti&&!ti.classList.contains('hide'))return 'home';
  const lb=$('lobby');if(lb&&!lb.classList.contains('hide'))return 'home';
+ if(bgmHush)return null;                 /* 演出のため意図的に無音 */
  if(mode==='puzzle')return 'battle';
  if(pieces.some(q=>q.t==='K'&&(q.bare||q.bareDone)))return 'bare';  /* 一度ベアキングになったら、終わった後もこの曲のまま */
  if(ranked)return 'ranked';
@@ -3383,7 +3389,9 @@ function bgmTick(now){
      ['w','b'].some(sd=>pieces.filter(q=>q.alive&&q.side===sd).length<=2))bgmLoad('bare');
   if(w===bgmKey)return;
   if(!w){if(bgmNode){bgmStop();setTimeout(()=>bgmSweep(1),(BGM_FADE+.3)*1000);}return;}
-  bgmPlay(w);}
+  /* 読み込みが間に合わないときに古い曲を鳴らし続けると、
+     対局が終わってホームに戻っても戦闘曲のままになる。先に止める。 */
+  if(!bgmPlay(w)&&bgmNode)bgmStop();}
  catch(e){}}
 /* アプリが背面に回ると iOS は AudioContext を中断する。
    戻ってきて resume しても、**中断前に作った再生ノードは死んでいる**ので
@@ -5730,7 +5738,7 @@ setPos(list,side){for(const p of pieces)if(p.mesh)scene.remove(p.mesh);pieces.le
   go(fromSq,toSq,kind,roll){const p=__T.at(fromSq);const f='abcdefgh'.indexOf(toSq[0]),r=+toSq[1];let pool=kind==='skill'?skillMoves(p):movesOfT(p);if(kind==='fork'){const fm=forkMove(p);for(const h of fm.hits)h.roll=roll!=null?roll:h.dmax;return perform(p,fm,false);}
     const m=pool.find(x=>x.f===f&&x.r===r);if(!m)return 'nomove';if(m.attack)m.roll=roll!=null?roll:m.dmax;if(!m.tags)m.tags=tagsFor(p,m);return perform(p,m,false).then(()=>'ok');}};
 window.__RB={mkPiece};   /* ルールブックの iframe が実物の駒モデルを借りる */
-window.__G={net:()=>({mode:ON.mode,code:RM.code,host:RM.host,direct:RM.direct,rtOpen:RT.open,pc:RT.pc&&RT.pc.connectionState,ch:RT.ch&&RT.ch.readyState,seen:RM.seen,poll:!!RM.poll,side:ON.side,moves:ON.moves.length,rx:RT.rx,tx:RT.tx,last:RT.last,buf:RT.buf.length,hasCb:!!RM.onmove}),noDirect:v=>{RT.noDirect=!!v;},bgm:()=>({key:bgmKey,want:bgmWant(),ac:AC&&AC.state,set:RKS.bgm,gain:bgmNode?+bgmNode.g.gain.value.toFixed(3):null,loop:bgmNode?[+bgmNode.src.loopStart.toFixed(4),+bgmNode.src.loopEnd.toFixed(4)]:null,bufs:Object.keys(BGM).filter(k=>BGM[k].buf),secs:+Object.keys(BGM).filter(k=>BGM[k].buf).reduce((x,k)=>x+BGM[k].buf.duration,0).toFixed(1),loading:Object.keys(BGM).filter(k=>BGM[k].loading),err:Object.keys(BGM).filter(k=>BGM[k].err).map(k=>k+': '+BGM[k].err)}),bgmSet:v=>{RKS.bgm=v;rkSave();bgmAt=0;},thin:(sd,keep)=>{let n=0;pieces.forEach(q=>{if(q.side===sd&&q.t!=='K'&&q.alive&&++n>(keep|0)){q.alive=false;q.hp=0;}});syncMeshes();},setBare:v=>{const k=pieces.find(q=>q.t==='K');k.bare=!!v;if(!v)pieces.forEach(q=>{q.bare=false;q.bareDone=false;});},setRanked:v=>{ranked=!!v;},toTitle:()=>{over=true;$('title').classList.remove('hide');},diag:()=>({frameN,last:+last.toFixed(1),busy,turn:turnSide,over,tw:tweens.length,ts:timeScale,ff,chain:!!chain,q:techQ.length,live:chainS.live.length,tws:tweens.map(w=>({d:w.d,t:+w.t.toFixed(2),fn:String(w.fn).slice(0,90)}))}),pzCount:()=>PUZZLES.length,pzTag:()=>PUZZLES[pzIdx]&&PUZZLES[pzIdx].tag,fx:()=>parts.length,setPos:(list,side)=>{mode='puzzle';humanSide='w';pzEnded=true;$('pzBar').classList.remove('on');$('result').classList.remove('on');$('pzDone').classList.remove('on');puzzleSetup(list,side||'w');const t=$('title');t.classList.add('hide');t.classList.remove('leaving');CAM.shot=topShot();busy=true;setTimeout(()=>{busy=false;startHuman();},900);},startPuzzle:i=>startPuzzle(i),vo:()=>({loaded:Object.values(voBuf).filter(b=>b&&b!=='loading').length,cur:voCur&&{start:+voCur.start.toFixed(2),end:+voCur.end.toFixed(2),prio:voCur.prio},t:AC&&+AC.currentTime.toFixed(2)}),sd:()=>[stallN,sdStage],gmInfo:()=>({depth:gmDepthDone,nodes:gmNodes,ms:gmLastMs,maxd:GM_MAXD,budget:GM_MS}),sim:(lw,lb,maxP)=>{const snap=pieces.map(q=>({q,f:q.f,r:q.r,hp:q.hp,alive:q.alive,t:q.t,max:q.max,bare:q.bare,walked:q.walked,moved:q.moved,bonus:q.bonus}));let side='w',n=0,res='draw';
+window.__G={net:()=>({mode:ON.mode,code:RM.code,host:RM.host,direct:RM.direct,rtOpen:RT.open,pc:RT.pc&&RT.pc.connectionState,ch:RT.ch&&RT.ch.readyState,seen:RM.seen,poll:!!RM.poll,side:ON.side,moves:ON.moves.length,rx:RT.rx,tx:RT.tx,last:RT.last,buf:RT.buf.length,hasCb:!!RM.onmove}),noDirect:v=>{RT.noDirect=!!v;},bgm:()=>({key:bgmKey,want:bgmWant(),hush:bgmHush,ac:AC&&AC.state,set:RKS.bgm,gain:bgmNode?+bgmNode.g.gain.value.toFixed(3):null,loop:bgmNode?[+bgmNode.src.loopStart.toFixed(4),+bgmNode.src.loopEnd.toFixed(4)]:null,bufs:Object.keys(BGM).filter(k=>BGM[k].buf),secs:+Object.keys(BGM).filter(k=>BGM[k].buf).reduce((x,k)=>x+BGM[k].buf.duration,0).toFixed(1),loading:Object.keys(BGM).filter(k=>BGM[k].loading),err:Object.keys(BGM).filter(k=>BGM[k].err).map(k=>k+': '+BGM[k].err)}),bgmSet:v=>{RKS.bgm=v;rkSave();bgmAt=0;},thin:(sd,keep)=>{let n=0;pieces.forEach(q=>{if(q.side===sd&&q.t!=='K'&&q.alive&&++n>(keep|0)){q.alive=false;q.hp=0;}});syncMeshes();},setBare:v=>{const k=pieces.find(q=>q.t==='K');k.bare=!!v;if(!v)pieces.forEach(q=>{q.bare=false;q.bareDone=false;});},setRanked:v=>{ranked=!!v;},toTitle:()=>{over=true;$('title').classList.remove('hide');},diag:()=>({frameN,last:+last.toFixed(1),busy,turn:turnSide,over,tw:tweens.length,ts:timeScale,ff,chain:!!chain,q:techQ.length,live:chainS.live.length,tws:tweens.map(w=>({d:w.d,t:+w.t.toFixed(2),fn:String(w.fn).slice(0,90)}))}),pzCount:()=>PUZZLES.length,pzTag:()=>PUZZLES[pzIdx]&&PUZZLES[pzIdx].tag,fx:()=>parts.length,setPos:(list,side)=>{mode='puzzle';humanSide='w';pzEnded=true;$('pzBar').classList.remove('on');$('result').classList.remove('on');$('pzDone').classList.remove('on');puzzleSetup(list,side||'w');const t=$('title');t.classList.add('hide');t.classList.remove('leaving');CAM.shot=topShot();busy=true;setTimeout(()=>{busy=false;startHuman();},900);},startPuzzle:i=>startPuzzle(i),vo:()=>({loaded:Object.values(voBuf).filter(b=>b&&b!=='loading').length,cur:voCur&&{start:+voCur.start.toFixed(2),end:+voCur.end.toFixed(2),prio:voCur.prio},t:AC&&+AC.currentTime.toFixed(2)}),sd:()=>[stallN,sdStage],gmInfo:()=>({depth:gmDepthDone,nodes:gmNodes,ms:gmLastMs,maxd:GM_MAXD,budget:GM_MS}),sim:(lw,lb,maxP)=>{const snap=pieces.map(q=>({q,f:q.f,r:q.r,hp:q.hp,alive:q.alive,t:q.t,max:q.max,bare:q.bare,walked:q.walked,moved:q.moved,bonus:q.bonus}));let side='w',n=0,res='draw';
   while(n<maxP){cpuLevel=side==='w'?lw:lb;const c=cpuChoose(side);if(!c){res='nomove';break;}const [p0,m0]=c;if(m0.attack)m0.roll=rollDmg(m0);if(m0.fork)m0.hits.forEach(h=>h.roll=rollDmg(h));make(p0,m0,false);n++;if(!kingOf('w')){res='b';break;}if(!kingOf('b')){res='w';break;}side=side==='w'?'b':'w';}
   for(const s0 of snap)Object.assign(s0.q,{f:s0.f,r:s0.r,hp:s0.hp,alive:s0.alive,t:s0.t,max:s0.max,bare:s0.bare,walked:s0.walked,moved:s0.moved,bonus:s0.bonus});lastMove=null;lastMover={w:null,b:null};discBuff={w:null,b:null};cpuLevel='normal';return [res,n];},setLv:v=>{cpuLevel=v;},timeCpu:(side,n)=>{const out=[];for(const lv of ['easy','normal','hard']){cpuLevel=lv;const t=performance.now();const r=cpuChoose(side);out.push([lv,Math.round(performance.now()-t),r&&('abcdefgh'[r[0].f]+r[0].r+'>'+'abcdefgh'[r[1].f]+r[1].r)]);}cpuLevel='normal';return out;},barTest:(from,to)=>{const q=pieces.find(x=>x.alive);const b=hpBar(q);b.shown=from;b.lag=from;drawBar(b);b.shown=to;b.lag=to;drawBar(b);const out=[];const t0=performance.now();return new Promise(res=>{const iv=setInterval(()=>{drawBar(b);out.push(b.disp);if(performance.now()-t0>700){clearInterval(iv);scene.remove(b.spr);res(out);}},60);});},tapSq:sq=>uiTap({f:'abcdefgh'.indexOf(sq[0]),r:+sq[1]}),ui:()=>({sel:sel&&('abcdefgh'[sel.f]+sel.r),skill:uiSkill,pending:!!uiPending,runes:runeG.children.length}),tech:(n,s)=>showTech(n,s),aim(p,m){focus(p);openPad();setTimeout(()=>{choose(m);padInfo(m);},450);},set speed(v){dbgSpeed=v},pieces,get busy(){return busy},get over(){return over},get turn(){return turnSide},start,playerMove:(p,m)=>playerMove(p,m),movesOfT,cpuChoose,skillMoves,forkMove,get sel(){return sel}};
 })();
