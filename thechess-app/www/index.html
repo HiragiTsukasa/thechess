@@ -2709,7 +2709,7 @@ const OKS={
 /* 粉砕の発動点。相手の中心に着いてからでは遅いので、頭が少し刺さったところで出す。
    OK_PIERCE … 横から突っ込むとき、相手の中心までこの距離に入った時点（単位はマス）
    OK_DIVE_Y … 上から落とすとき、この高さまで降りた時点 */
-let OK_PIERCE=.62,OK_DIVE_Y=1.55;
+let OK_PIERCE=1.2,OK_DIVE_Y=1.55;
 function overkillBoom(tp,y){OKS.impact();hitSlow(.8,.55);CAM.shake=1.7;CAM.fovKick=14;const fl=$('sdFlash');if(fl){fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');}
   fireball(tp.clone().setY(y),1.5);for(let i=0;i<3;i++)setTimeout(()=>shock(tp.clone().setY(i?.04:y),2.4+i*1.5,i?0xff4a3a:0xffb040),i*80);showTech('Overkill','');}
 function barHit(t,ev,tp){const hb=hpBar(t);hb.shown=ev.hp0;hb.lag=ev.hp0;drawBar(hb);hb.spr.position.set(tp.x,barY(t.t),tp.z);hb.shown=ev.hp1;hb.lag=ev.hp1;drawBar(hb);updateTotals();return hb;}
