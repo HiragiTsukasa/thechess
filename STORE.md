@@ -7,7 +7,7 @@
 
 ## 何を押し出すか
 
-**「チェスであり、チェスとは別の戦略性がある」。**
+**「チェスであり、チェスじゃない。全く新しい戦略性を用いた、新感覚チェス」。**
 
 - 盤も駒の動きもキャスリングもアンパサンもプロモーションも、チェスのまま
 - **取る／取られるが無い。** 削る／削られるになる
@@ -33,16 +33,16 @@ The Chess: Groundbreaking
 ### Subtitle（30文字以内）
 
 ```
-Chess with its own strategy
+Chess, and not chess
 ```
-27文字
+20文字
 
 ### Promotional Text（170文字以内・審査なしで差し替え可）
 
 ```
-A pawn hits harder than a queen here. Every piece has HP and skills, nothing is ever captured, and the chess move you were about to play is rarely the best one.
+Chess, and not chess. A new kind of chess with a strategy all its own. A pawn hits harder than a queen, every piece has HP and a skill, and nothing is ever captured.
 ```
-159文字
+165文字
 
 ### Keywords（100文字以内・カンマ区切り・スペースを入れない）
 
@@ -102,16 +102,16 @@ The Chess: Groundbreaking
 ### Subtitle（30文字以内）
 
 ```
-チェスであり、別の戦略がある
+チェスであり、チェスじゃない
 ```
 14文字
 
 ### Promotional Text（170文字以内）
 
 ```
-ここではポーンの方がクイーンより重い。駒にHPとスキルがあり、取る／取られるが無い。あなたが指そうとしたチェスの最善手は、ここでは最善ではない。
+チェスであり、チェスじゃない。全く新しい戦略性を用いた、新感覚チェス。ポーンの方がクイーンより重く、駒にはHPとスキル。取る／取られるが無い盤で、あなたが指そうとした最善手は、ここでは最善ではありません。
 ```
-70文字
+102文字
 
 ### Keywords（100文字以内）
 
@@ -157,6 +157,21 @@ Spoils … 倒した駒のHPの一部を、自分の回復として受け取る
 
 ランクマッチの開催は日本時間 9:00〜23:00。
 ```
+
+---
+
+## そのほかの欄
+
+| 欄 | 入れるもの |
+|---|---|
+| サポートURL | `https://thechess-privacy.netlify.app/support.html` |
+| マーケティングURL | **空のまま**（宣伝用サイトは無い。プライバシーポリシーを入れる欄ではない） |
+| 著作権 | `2026 <販売者名>` — CubeTactics と同じ表記に揃える |
+| バージョン | `1.0` |
+| ルーティングアプリカバレッジファイル | **空のまま**（経路案内アプリ用） |
+
+プライバシーポリシーURL（`https://thechess-privacy.netlify.app/`）は
+この画面ではなく「アプリのプライバシー」に入れる。
 
 ---
 
