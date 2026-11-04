@@ -281,6 +281,7 @@ body[data-picking] #plPill{display:none}
 .dots{display:flex;gap:8px;justify-content:center;margin:6px 0}.dots i{width:8px;height:8px;border-radius:50%;background:var(--brass);animation:dot 1.2s infinite}.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
 @keyframes dot{0%,100%{opacity:.2}50%{opacity:1}}
 #lobbyMsg{min-height:1.4em;font-size:12px;color:#f3a595;margin-top:10px}
+#lobbyMsg.busy{color:var(--sub)}   /* 進行中は赤くしない。赤は失敗のときだけ */
 .linkb{background:none;border:none;color:var(--sub);font-size:12px;text-decoration:underline;margin-top:8px;height:44px}
 .an.heal{color:#7fd0a0}
 .pc.pinned{box-shadow:inset 0 0 0 1px rgba(217,138,208,.6)}
@@ -3597,7 +3598,7 @@ const CID=(()=>{try{let c=localStorage.getItem('nc_cid');if(!c){c=Math.random().
 const saveSess=v=>{try{v?localStorage.setItem('nc_sess',JSON.stringify(v)):localStorage.removeItem('nc_sess');}catch(e){}};
 const loadSess=()=>{try{return JSON.parse(localStorage.getItem('nc_sess')||'null');}catch(e){return null;}};
 /* 「オンライン」を押せるようにするのは、通信層を読んだあと（下の netOn の定義より後） */
-function lobbyMsg(t){$('lobbyMsg').textContent=t||'';}
+function lobbyMsg(t,busy){const e=$('lobbyMsg');e.textContent=t||'';e.classList.toggle('busy',!!busy);}
 function openLobby(kind){$('title').classList.add('hide');$('lobby').classList.remove('hide');$('lobbyMain').classList.remove('hide');$('lobbyWait').classList.add('hide');lobbyMsg('');
   const L=$('lobby');L.classList.remove('jn','mk');
   if(kind==='join'){L.classList.add('jn');}else if(kind==='mk'){L.classList.add('mk');}
@@ -3972,7 +3973,7 @@ function netStart(){
 /* ---- 部屋をつくる ---- */
 async function createRoom(){
   if(!netOn()){lobbyMsg(TR('いまは部屋を作れません'));return;}
-  lobbyMsg(TR('部屋を準備中…'));rmReset();
+  lobbyMsg(TR('部屋を準備中…'),1);rmReset();
   try{await fbAuth();}catch(e){lobbyMsg(TR('通信できませんでした'));return;}
   let code=null;
   for(let i=0;i<8&&!code;i++){
@@ -5528,7 +5529,7 @@ function tutStart(){
  if(!sel){const p=pieces.find(q=>q.alive&&q.side===myside()&&movesOfT(q).length);if(!p)return;uiSelectRaw(p);}
  if(!sel||!moves||!moves.length)return;
  const x=Math.round(innerWidth*.5),y=Math.round(innerHeight*.46);
- tutA={t0:performance.now(),x,y};tutMark();
+ tutA={t0:performance.now(),st:performance.now(),x,y,step:0,from:0,cur:0};tutMark();
  const f=$('tutFing'),c=$('tutCap');if(f){f.style.display='block';f.style.left=x+'px';f.style.top=y+'px';}
  if(c)c.style.display='block';
  $('tutQ')&&$('tutQ').classList.add('hot');
@@ -5536,23 +5537,34 @@ function tutStart(){
  cancelAnimationFrame(tutA.raf||0);const tick=()=>{if(!tutA)return;tutFrame();if(tutA)tutA.raf=requestAnimationFrame(tick);};
  tutA.raf=requestAnimationFrame(tick);}
 const TUT_PULL=112;
+/* 時間で勝手に進むと速すぎて読めない。1段ずつ、タップで進める。 */
+const TUT_S=[
+ {cap:'画面のどこからでも、指を置いて',                 dy:0,        d:.35},
+ {cap:'引く。駒は引いた向きと逆へ飛ぶ',                 dy:TUT_PULL, d:.75},
+ {cap:'指を離すと、そのマスに指す',                     dy:TUT_PULL, d:.15},
+ {cap:'今回は練習なので戻します。? でまた見られます',   dy:0,        d:.45}];
+function tutNext(){
+ if(!tutA)return;
+ tutA.from=tutA.cur;tutA.step++;tutA.st=performance.now();
+ if(tutA.step>=TUT_S.length)tutStop();}
 function tutFrame(){
  if(!tutA)return;
  if(!sel||busy||over||!humanTurn()){tutStop();return;}
- const t=(performance.now()-tutA.t0)/1000,{x,y}=tutA;let fy=y;
- if(t<.6){tutCapT(TR('画面のどこからでも、指を置いて'));}
- else if(t<1.8){const k=Math.min(1,(t-.6)/1.2);fy=y+TUT_PULL*k;tutPE('pointermove',x,fy);
-  tutCapT(TR('引く。駒は引いた向きと逆へ飛ぶ'));}
- else if(t<3.0){fy=y+TUT_PULL;tutCapT(TR('指を離すと、そのマスに指す'));}
- else if(t<3.5){const k=(t-3.0)/.5;fy=y+TUT_PULL*(1-k);tutPE('pointermove',x,fy);
-  tutCapT(TR('今回は練習なので戻します。? でまた見られます'));}
- else{tutStop();return;}
+ const s=TUT_S[tutA.step];if(!s){tutStop();return;}
+ const {x,y}=tutA;
+ const k=Math.min(1,(performance.now()-tutA.st)/1000/s.d);
+ const dy=tutA.from+(s.dy-tutA.from)*k;tutA.cur=dy;
+ const fy=y+dy;
+ tutPE('pointermove',x,fy);
+ tutCapT(TR(s.cap)+(k>=1?TR('　─　タップで次へ'):''));
  const f=$('tutFing');if(f){f.style.left=x+'px';f.style.top=fy+'px';}}
 const uiSelectRaw=uiSelect;
 uiSelect=function(p){uiSelectRaw(p);
  if(!tutSeen()&&!tutA)setTimeout(()=>{try{tutStart();}catch(e){}},450);};
 $('view').addEventListener('pointerdown',e=>{if(e.pointerId===99)return;
- if(tutA)tutStop();if(typeof tut2!=='undefined'&&tut2)tut2Stop();},true);
+ /* 説明の最中のタップは「次へ」。盤には渡さない（駒が動いてしまうため） */
+ if(tutA){e.stopPropagation();tutNext();return;}
+ if(typeof tut2!=='undefined'&&tut2){e.stopPropagation();tut2Next();return;}},true);
 $('tutQ')&&$('tutQ').addEventListener('click',e=>{e.stopPropagation();audio();
  if(tutA){tutStop();return;}
  if(typeof tut2!=='undefined'&&tut2){tut2Stop();return;}
@@ -5575,24 +5587,31 @@ function tut2Stop(){if(!tut2)return;cancelAnimationFrame(tut2.raf||0);tut2=null;
 function tut2Can(){return sel&&humanTurn()&&!busy&&!over&&modesOf(sel).length>0;}
 function tut2Start(){
  if(tut2||tutA||!tut2Can())return;
- tut2={t0:performance.now(),p:sel};tut2Mark();
+ tut2={t0:performance.now(),st:performance.now(),p:sel,step:0};tut2Mark();
  const f=$('tutFing'),c=$('tutCap');if(f)f.style.display='block';if(c)c.style.display='block';
  $('tutQ')&&$('tutQ').classList.add('hot');
  const tick=()=>{if(!tut2)return;tut2Frame();if(tut2)tut2.raf=requestAnimationFrame(tick);};
  tut2.raf=requestAnimationFrame(tick);}
+/* こちらもタップで1段ずつ */
+function tut2Next(){
+ if(!tut2)return;
+ tut2.step=(tut2.step|0)+1;tut2.st=performance.now();
+ if(tut2.step>=3){tut2Stop();return;}
+ if(tut2.step===1){try{uiToggle(sel);}catch(e){}}
+ if(tut2.step===2)tut2Back();}
 function tut2Frame(){
  if(!tut2)return;
  if(sel!==tut2.p||busy||over||!humanTurn()){tut2Stop();return;}
- const t=(performance.now()-tut2.t0)/1000,[x,y]=scrOf(tut2.p);
- const f=$('tutFing');
- if(t<.85){tutCapT(TR('選んだ駒を、もう一度タップ'));if(f){f.style.left=x+'px';f.style.top=y+'px';f.style.transform='translate(-50%,-50%)';}}
- else if(t<2.6){if(!tut2.a){tut2.a=1;try{uiToggle(sel);}catch(e){}}
-  tutCapT(TR('技モードに入り、候補マスが技の色に変わる'));
-  if(f){f.style.left=x+'px';f.style.top=y+'px';f.style.transform='translate(-50%,-50%) scale('+(t<1.0?.72:1)+')';}}
- else if(t<4.0){if(!tut2.b){tut2.b=1;tut2Back();}
-  tutCapT(TR('もう一度タップで通常に戻る。何も確定しないので気軽に試せる'));
-  if(f)f.style.display='none';}
- else{tut2Stop();}}
+ const [x,y]=scrOf(tut2.p),f=$('tutFing');
+ const st=tut2.step|0,t=(performance.now()-(tut2.st||tut2.t0))/1000;
+ const tail=TR('　─　タップで次へ');
+ if(st===0){tutCapT(TR('選んだ駒を、もう一度タップ')+tail);
+  if(f){f.style.display='block';f.style.left=x+'px';f.style.top=y+'px';f.style.transform='translate(-50%,-50%)';}}
+ else if(st===1){tutCapT(TR('技モードに入り、候補マスが技の色に変わる')+tail);
+  if(f){f.style.display='block';f.style.left=x+'px';f.style.top=y+'px';
+   f.style.transform='translate(-50%,-50%) scale('+(t<.25?.72:1)+')';}}
+ else{tutCapT(TR('もう一度タップで通常に戻る。何も確定しないので気軽に試せる')+tail);
+  if(f)f.style.display='none';}}
 const uiSelectRaw2=uiSelect;
 uiSelect=function(p){uiSelectRaw2(p);
  if(!tut2Seen()&&!tut2&&!tutA)setTimeout(()=>{try{tut2Start();}catch(e){}},500);};
