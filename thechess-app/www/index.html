@@ -3935,7 +3935,7 @@ async function joinRoom(code){
    ?currentDocument.exists=false 付きの作成が Compare-and-Swap になるので、
    一覧検索（runQuery）を使わない。1回の確認が1読み取りで済む。
 ═══════════════════════════════════════════════════════════════════ */
-const MM_STEP=200,MM_SLOTS=3,MM_BUDGET=14000,MM_TICK=2000;
+const MM_STEP=200,MM_SLOTS=3,MM_BUDGET=8000,MM_TICK=2000;
 const mmBand=r=>Math.floor((r|0)/MM_STEP);
 const mmCode=(b,s)=>'rank-'+b+'-'+s;
 
