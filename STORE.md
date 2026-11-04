@@ -5,8 +5,19 @@
 **プライマリ言語は英語（U.S.）**にして、日本語をローカリゼーションとして足す。
 そうしないと、英語圏以外の国で日本語のページが出る。
 
-**軸は「駒にHPがあること」と「駒がスキルを持つこと」。** 走った距離が威力になるのは
-ダメージの計算式の一部であって、売りではない。前の草案はそこを取り違えていた。
+## 何を押し出すか
+
+**「チェスであり、チェスとは別の戦略性がある」。**
+
+- 盤も駒の動きもキャスリングもアンパサンもプロモーションも、チェスのまま
+- **取る／取られるが無い。** 削る／削られるになる
+- 駒ごとに威力が違うから HP がある。**ポーン90、クイーン80 — ポーンの方が重い**
+- 駒ごとにスキルがある
+- 王ひとつになると、そこから最も危険な駒になる
+
+**チェスの読みは効く。ただし、チェスの最善手は最善ではない。** そこが売り。
+
+走った距離が威力になるのは計算式の一部であって、見出しに置くものではない。
 
 ---
 
@@ -22,45 +33,48 @@ The Chess: Groundbreaking
 ### Subtitle（30文字以内）
 
 ```
-Chess with HP and skills
+Chess with its own strategy
 ```
-24文字
+27文字
 
 ### Promotional Text（170文字以内・審査なしで差し替え可）
 
 ```
-Every piece has HP, and every piece has skills. A rook fires down an open file, a bishop heals, a knight splits its charge between two targets and returns.
+A pawn hits harder than a queen here. Every piece has HP and skills, nothing is ever captured, and the chess move you were about to play is rarely the best one.
 ```
-152文字
+159文字
 
 ### Keywords（100文字以内・カンマ区切り・スペースを入れない）
 
 ```
-chess,hp,skill,rpg,tactics,board,strategy,puzzle,turn,offline,rating,duel,3d,solo
+chess,hp,skill,tactics,strategy,rpg,board,puzzle,turn,offline,rating,duel,3d,solo
 ```
-80文字
+81文字
 
 ### Description
 
 ```
-Chess where the pieces have HP, and every one of them has skills.
+It is chess. The same board, the same moves, castling, en passant, promotion. And then almost none of what you know about chess tells you the right move.
 
-Nothing is captured outright. A rook does not remove a knight from the board; it takes 340 off it, and the knight stays and hits back. Games are won by grinding the enemy king's HP to zero, so a damaged piece is still a piece, and a piece that survives on 40 HP can still decide the game.
+NOTHING IS CAPTURED
+A rook does not remove a knight from the board. It takes 340 off it, and the knight stays, on 140 HP, and hits back. There are no exchanges here, only arithmetic: what is left standing afterwards, and on how much.
 
-TWENTY-TWO SKILLS
-Pins, forks, skewers, discovered attacks and double checks are not notation here. Each one is a move you fire, with its name called out over the board.
+PIECES HIT DIFFERENTLY, SO PIECES HAVE HP
+A pawn has 320 HP and 90 power. A queen has 760 HP and 80. The pawn hits harder. Everything you were taught about what a piece is worth has to be worked out again from these two numbers, and the piece you would have traded away without thinking is often the one that wins the game.
 
-Laser - a rook with a clear file shoots straight down it, hitting everything in line.
+EVERY PIECE HAS SKILLS
+Laser - a rook with a clear file shoots down it, hitting everything in line.
 Sanctuary - a bishop heals a friendly piece instead of attacking.
-Homecoming - a piece deep in enemy territory returns to its own rank.
+Homecoming - a piece deep in enemy ground returns to its own rank.
 Fork - a knight threatening two pieces splits its charge between both and comes back.
 Spoils - kill something and take back part of its HP as healing.
+Twenty-two in all, each fired on the board with its name called out.
 
-THE BARE KING
-Strip an opponent down to the king alone and it does not surrender. It heals, its power doubles, it strikes back at anyone who touches it, and for eight turns it is the most dangerous piece on the board. Many games turn after that moment, not before it.
+THE ENDGAME RUNS BACKWARDS
+Strip an opponent to the king alone and it does not surrender. It heals, its power doubles, it strikes back at anyone who touches it, and for eight turns it is the most dangerous piece on the board. Being reduced to nothing is a weapon. Games turn after that moment far more often than before it.
 
-HOW DAMAGE WORKS
-A piece's own power, multiplied by how far it came, give or take a few percent, with room for a critical. For a rook or a bishop that is the squares crossed; for a knight it is how many pieces it vaulted. A rook that runs four squares hits far harder than one that shuffles a single square, so where a piece begins its run matters as much as where it lands.
+HOW DAMAGE IS WORKED OUT
+A piece's power, multiplied by how far it came, give or take a few percent, with room for a critical. For a rook or bishop that is squares crossed; for a knight, pieces vaulted. Where a piece begins its run matters as much as where it lands.
 
 WHAT IS IN IT
 - Offline matches against three strengths of opponent
@@ -88,45 +102,48 @@ The Chess: Groundbreaking
 ### Subtitle（30文字以内）
 
 ```
-駒にHPがあり、駒がスキルを撃つチェス
+チェスであり、別の戦略がある
 ```
-18文字
+14文字
 
 ### Promotional Text（170文字以内）
 
 ```
-駒にHPがある。そして駒がスキルを持つ。列の通ったルークは撃ち抜き、ビショップは味方を癒し、ナイトは2体へ突進を分けて戻ってくる。
+ここではポーンの方がクイーンより重い。駒にHPとスキルがあり、取る／取られるが無い。あなたが指そうとしたチェスの最善手は、ここでは最善ではない。
 ```
-63文字
+70文字
 
 ### Keywords（100文字以内）
 
 ```
-チェス,HP,スキル,RPG,戦略,ボード,パズル,ターン制,オフライン,レート,対戦,頭脳
+チェス,HP,スキル,戦略,戦術,RPG,ボード,パズル,ターン制,オフライン,レート,対戦
 ```
 45文字
 
 ### Description
 
 ```
-駒にHPがあり、駒ひとつひとつがスキルを持つチェス。
+チェスです。盤も、駒の動きも、キャスリングもアンパサンもプロモーションも、そのまま。それでいて、あなたが知っているチェスの常識は、ここではほとんど通用しません。
 
-駒は取られない。ルークがナイトを盤から消すのではなく、340を削る。ナイトは残って殴り返してくる。勝ち負けは相手のキングのHPを0にできるかで決まるので、傷ついた駒もまだ駒であり、HP40で生き残った1体が勝負を決めることがある。
+■ 取る／取られるが無い
+ルークはナイトを盤から消しません。340を削るだけで、ナイトはHP140で残り、殴り返してきます。ここに「交換」はありません。あるのは計算です。撃ち合ったあと、何が、どれだけのHPで残るのか。
 
-■ 22のスキル
-ピン、フォーク、スキュア、ディスカバードアタック、ダブルチェック。ここでは記譜ではなく、技名とともに盤の上で発動する。
+■ 駒ごとに威力が違うから、HPがある
+ポーンはHP320・威力90。クイーンはHP760・威力80。**ポーンの方が重い。** 駒の価値について教わってきたことは、この2つの数字から全部計算し直すことになります。考えもせず切っていた駒が、勝負を決めることがあります。
 
+■ 駒ごとにスキルがある
 Laser … 列の通ったルークが、その列をまっすぐ撃ち抜く
 Sanctuary … ビショップが攻撃の代わりに味方を回復する
 Homecoming … 敵陣深くの駒が、自陣へ帰還する
 Fork … 2体を同時に狙えるナイトが、突進を分けて元のマスへ戻る
 Spoils … 倒した駒のHPの一部を、自分の回復として受け取る
+全部で22。どれも技名とともに盤の上で発動します。
 
-■ ベアキング
-相手を王ひとつまで削っても、終わらない。回復し、力が倍になり、触れた者に殴り返し、8ターンのあいだ盤上で最も危険な駒になる。勝負はこの瞬間の「あと」に決まることが多い。
+■ 終盤が逆を向く
+相手を王ひとつまで削っても、終わりません。回復し、威力が倍になり、触れた者に殴り返し、8ターンのあいだ盤上で最も危険な駒になります。何もかも失うことが武器になる。勝負は、この瞬間の「前」より「あと」に決まります。
 
 ■ ダメージの決まり方
-駒ごとの威力 × どれだけ来たか ± 数パーセント、そこに会心が乗る。ルークやビショップなら走ったマス数、ナイトなら飛び越えた駒の数。4マス走ったルークは、1マスだけ動いたルークよりはるかに重い。どこへ置くかと同じだけ、どこから走らせるかが効いてくる。
+駒ごとの威力 × どれだけ来たか ± 数パーセント、そこに会心。ルークやビショップなら走ったマス数、ナイトなら飛び越えた駒の数。どこへ置くかと同じだけ、どこから走らせるかが効いてきます。
 
 ■ 入っているもの
 ・オフライン対戦（3段階の強さ）
@@ -136,7 +153,7 @@ Spoils … 倒した駒のHPの一部を、自分の回復として受け取る
 ・ルールブック。22のスキルすべてが3Dの盤の上で動く
 
 ■ 広告なし。サブスクなし。
-オフラインの「やさしい」、パズル、ルールブックは、回数制限なく無料のまま遊べる。買い切り1回で、他の難易度とランクマッチ、部屋の作成が開く。アプリ内の購入はそれ1つだけ。
+オフラインの「やさしい」、パズル、ルールブックは、回数制限なく無料のまま遊べます。買い切り1回で、他の難易度とランクマッチ、部屋の作成が開きます。アプリ内の購入はそれ1つだけ。
 
 ランクマッチの開催は日本時間 9:00〜23:00。
 ```
@@ -169,7 +186,9 @@ Restore is in the menu at the top right.
 - 「世界中のプレイヤーと対戦」… 相手が見つからないときはCPU。断定しない
 - 「リアルタイム対戦」… ターン制
 - 「AIが学習」… していない
-- **「走った距離が攻撃力」を見出しにしない** … ダメージ計算の一部であって、このゲームの売りではない
+- **「走った距離が攻撃力」を見出しにしない** … 計算式の一部であって、売りではない
+- **「チェスの知識が要らない」とも「チェスができれば勝てる」とも書かない** … どちらも違う。
+  読みは効くが、最善手は変わる
 
 ---
 
