@@ -42,9 +42,12 @@
 git clone https://github.com/HiragiTsukasa/thechess.git
 cd thechess/thechess-app
 git checkout release-check
-npm install
+npm install       # ★依存が増えた回は必須（@capgo/capacitor-updater）
 npm run sync      # ★必須。これを飛ばすと起動しても真っ白で、購入も動かない
 ```
+
+2回目以降も、`git pull` のあとは **`npm install` → `npm run sync`** の順で。
+`package.json` が変わっていない回は `npm install` を飛ばしてもよいが、付けておいて害はない。
 
 `ios/` はコミット済みだが、その中の `App/App/public/`（ゲーム本体）、
 `capacitor-cordova-ios-plugins/`（課金プラグイン）、`App/App/capacitor.config.json`、
@@ -121,6 +124,35 @@ npm run open
 Sandbox アカウントで購入を試すこと。
 
 ### 6. 提出
+
+---
+
+## ライブ更新（まだ動かしていない）
+
+`@capgo/capacitor-updater` を**部品として入れてあるだけ**で、いまは何も起きない。
+あとから部品を足すと審査が1回要るので、先に積んである。
+
+| | |
+|---|---|
+| 設定 | `autoUpdate:false` … 取りに行くかは JS 側で決める |
+| | `resetWhenUpdate:true` … ストア更新が入ったらライブ版を捨てて素の版へ戻る |
+| 見に行く先 | `https://the-chess-33d12.web.app/live/latest.json` |
+| アプリの版 | `www/index.html` の `APP_VER`（いま `1.0.0`） |
+
+`latest.json` を置いていないので、起動5秒後に404を引いて黙って終わる。
+動かしたくなったら、Firebase Hosting の `live/` に次を置く。
+
+```json
+{ "version": "1.0.1", "url": "https://the-chess-33d12.web.app/live/1.0.1.zip" }
+```
+
+**zip は www/ を丸ごと入れること。** web ルートごと差し替わるので、`index.html` だけ入れると
+`lib/three.min.js`・`fonts/`・`bgm/`・`iap.js` が全部 404 になる。実測 7,858KB
+（mp3 を除くと 1,253KB）。
+
+**mp3 をそのまま zip に入れると、曲の利用規約（配布・容易なアクセス）に触れる。**
+ライブ更新を実際に使うなら、先に BGM をネイティブのバンドル側へ移すこと。
+そうすれば zip は 1.25MB で済み、mp3 は公開ウェブに出ない。
 
 ---
 

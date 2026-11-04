@@ -17,6 +17,11 @@
       "style": "DARK",
       "backgroundColor": "#0b0c0e",
       "overlaysWebView": true
+    },
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "resetWhenUpdate": true,
+      "directUpdate": false
     }
   }
 }

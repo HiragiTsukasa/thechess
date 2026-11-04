@@ -13,6 +13,7 @@
     "@capacitor/ios": "^8.6.0",
     "@capacitor/splash-screen": "^8.0.2",
     "@capacitor/status-bar": "^8.0.4",
+    "@capgo/capacitor-updater": "^8.54.2",
     "cordova-plugin-purchase": "^13.20.0"
   },
   "devDependencies": {

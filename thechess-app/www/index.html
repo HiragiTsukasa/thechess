@@ -3514,6 +3514,33 @@ for(const ev of ['pageshow','focus'])
 try{const CA=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;
  if(CA&&CA.addListener)CA.addListener('appStateChange',st=>{if(st&&st.isActive){acT=-1;acTAt=0;audioWake();}});}catch(e){}
 setTimeout(audioWake,0);                      /* 許されていれば最初のタップは要らない */
+
+/* ── ライブ更新 ─────────────────────────────────────────
+   部品だけ先に入れてある。latest.json をまだ置いていないので、いまは何も起きない。
+   公開後に置けばそこから動き出す（あとから部品を足すと審査が1回要るため）。
+   ストア更新が入ったら resetWhenUpdate でライブ版は捨てられ、素の版に戻る。 */
+const APP_VER='1.0.0';
+const LIVE_URL='https://the-chess-33d12.web.app/live/latest.json';
+function verNewer(a,b){
+ const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);
+ for(let i=0;i<3;i++){const u=x[i]||0,v=y[i]||0;if(u!==v)return u>v;}
+ return false;}
+async function liveInit(){
+ const P=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
+ if(!P)return;
+ try{await P.notifyAppReady();}catch(e){}    /* 呼ばないと前の版へ巻き戻される */
+ try{
+  const r=await fetch(LIVE_URL+'?t='+Date.now(),{cache:'no-store'});
+  if(r.status>=400)return;
+  const j=await r.json();
+  if(!j||!j.version||!j.url||!verNewer(j.version,APP_VER))return;
+  const o={url:j.url,version:j.version};if(j.checksum)o.checksum=j.checksum;
+  const b=await P.download(o);
+  if(!b||!b.id)return;
+  try{await P.next({id:b.id});}catch(e){}    /* 次の起動から使う。対局中に入れ替えない */
+ }catch(e){}
+}
+setTimeout(liveInit,5000);
 for(const ev of ['gesturestart','gesturechange','gestureend'])
  document.addEventListener(ev,e=>e.preventDefault(),{passive:false});
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
@@ -5869,7 +5896,10 @@ setPos(list,side){for(const p of pieces)if(p.mesh)scene.remove(p.mesh);pieces.le
   go(fromSq,toSq,kind,roll){const p=__T.at(fromSq);const f='abcdefgh'.indexOf(toSq[0]),r=+toSq[1];let pool=kind==='skill'?skillMoves(p):movesOfT(p);if(kind==='fork'){const fm=forkMove(p);for(const h of fm.hits)h.roll=roll!=null?roll:h.dmax;return perform(p,fm,false);}
     const m=pool.find(x=>x.f===f&&x.r===r);if(!m)return 'nomove';if(m.attack)m.roll=roll!=null?roll:m.dmax;if(!m.tags)m.tags=tagsFor(p,m);return perform(p,m,false).then(()=>'ok');}};
 window.__RB={mkPiece};   /* ルールブックの iframe が実物の駒モデルを借りる */
-window.__G={net:()=>({mode:ON.mode,code:RM.code,host:RM.host,direct:RM.direct,rtOpen:RT.open,pc:RT.pc&&RT.pc.connectionState,ch:RT.ch&&RT.ch.readyState,seen:RM.seen,poll:!!RM.poll,side:ON.side,moves:ON.moves.length,rx:RT.rx,tx:RT.tx,last:RT.last,buf:RT.buf.length,hasCb:!!RM.onmove}),noDirect:v=>{RT.noDirect=!!v;},bgm:()=>({key:bgmKey,want:bgmWant(),hush:bgmHush,ac:AC&&AC.state,set:RKS.bgm,gain:bgmNode?+bgmNode.g.gain.value.toFixed(3):null,loop:bgmNode?[+bgmNode.src.loopStart.toFixed(4),+bgmNode.src.loopEnd.toFixed(4)]:null,bufs:Object.keys(BGM).filter(k=>BGM[k].buf),secs:+Object.keys(BGM).filter(k=>BGM[k].buf).reduce((x,k)=>x+BGM[k].buf.duration,0).toFixed(1),loading:Object.keys(BGM).filter(k=>BGM[k].loading),err:Object.keys(BGM).filter(k=>BGM[k].err).map(k=>k+': '+BGM[k].err)}),bgmSet:v=>{RKS.bgm=v;rkSave();bgmAt=0;},thin:(sd,keep)=>{let n=0;pieces.forEach(q=>{if(q.side===sd&&q.t!=='K'&&q.alive&&++n>(keep|0)){q.alive=false;q.hp=0;}});syncMeshes();},setBare:v=>{const k=pieces.find(q=>q.t==='K');k.bare=!!v;if(!v)pieces.forEach(q=>{q.bare=false;q.bareDone=false;});},setRanked:v=>{ranked=!!v;},toTitle:()=>{over=true;$('title').classList.remove('hide');},diag:()=>({frameN,last:+last.toFixed(1),busy,turn:turnSide,over,tw:tweens.length,ts:timeScale,ff,chain:!!chain,q:techQ.length,live:chainS.live.length,tws:tweens.map(w=>({d:w.d,t:+w.t.toFixed(2),fn:String(w.fn).slice(0,90)}))}),pzCount:()=>PUZZLES.length,pzTag:()=>PUZZLES[pzIdx]&&PUZZLES[pzIdx].tag,fx:()=>parts.length,ok:()=>({pierce:OK_PIERCE,diveY:OK_DIVE_Y}),okSet:(p,y)=>{if(p!=null)OK_PIERCE=+p;if(y!=null)OK_DIVE_Y=+y;},setPos:(list,side)=>{mode='puzzle';humanSide='w';pzEnded=true;$('pzBar').classList.remove('on');$('result').classList.remove('on');$('pzDone').classList.remove('on');puzzleSetup(list,side||'w');const t=$('title');t.classList.add('hide');t.classList.remove('leaving');CAM.shot=topShot();busy=true;setTimeout(()=>{busy=false;startHuman();},900);},startPuzzle:i=>startPuzzle(i),vo:()=>({loaded:Object.values(voBuf).filter(b=>b&&b!=='loading').length,cur:voCur&&{start:+voCur.start.toFixed(2),end:+voCur.end.toFixed(2),prio:voCur.prio},t:AC&&+AC.currentTime.toFixed(2)}),sd:()=>[stallN,sdStage],gmInfo:()=>({depth:gmDepthDone,nodes:gmNodes,ms:gmLastMs,maxd:GM_MAXD,budget:GM_MS}),sim:(lw,lb,maxP)=>{const snap=pieces.map(q=>({q,f:q.f,r:q.r,hp:q.hp,alive:q.alive,t:q.t,max:q.max,bare:q.bare,walked:q.walked,moved:q.moved,bonus:q.bonus}));let side='w',n=0,res='draw';
+/* デバッグ用の窓。アプリ（capacitor://）では開かない。盤面を作り替えたり
+   相手の駒を消したりできてしまうので、製品に窓を残さない。
+   ブラウザで開いたときだけ使える（確認用のスクリプトはこれを使っている）。 */
+if(location.protocol!=='capacitor:')window.__G={net:()=>({mode:ON.mode,code:RM.code,host:RM.host,direct:RM.direct,rtOpen:RT.open,pc:RT.pc&&RT.pc.connectionState,ch:RT.ch&&RT.ch.readyState,seen:RM.seen,poll:!!RM.poll,side:ON.side,moves:ON.moves.length,rx:RT.rx,tx:RT.tx,last:RT.last,buf:RT.buf.length,hasCb:!!RM.onmove}),noDirect:v=>{RT.noDirect=!!v;},bgm:()=>({key:bgmKey,want:bgmWant(),hush:bgmHush,ac:AC&&AC.state,set:RKS.bgm,gain:bgmNode?+bgmNode.g.gain.value.toFixed(3):null,loop:bgmNode?[+bgmNode.src.loopStart.toFixed(4),+bgmNode.src.loopEnd.toFixed(4)]:null,bufs:Object.keys(BGM).filter(k=>BGM[k].buf),secs:+Object.keys(BGM).filter(k=>BGM[k].buf).reduce((x,k)=>x+BGM[k].buf.duration,0).toFixed(1),loading:Object.keys(BGM).filter(k=>BGM[k].loading),err:Object.keys(BGM).filter(k=>BGM[k].err).map(k=>k+': '+BGM[k].err)}),bgmSet:v=>{RKS.bgm=v;rkSave();bgmAt=0;},thin:(sd,keep)=>{let n=0;pieces.forEach(q=>{if(q.side===sd&&q.t!=='K'&&q.alive&&++n>(keep|0)){q.alive=false;q.hp=0;}});syncMeshes();},setBare:v=>{const k=pieces.find(q=>q.t==='K');k.bare=!!v;if(!v)pieces.forEach(q=>{q.bare=false;q.bareDone=false;});},setRanked:v=>{ranked=!!v;},toTitle:()=>{over=true;$('title').classList.remove('hide');},diag:()=>({frameN,last:+last.toFixed(1),busy,turn:turnSide,over,tw:tweens.length,ts:timeScale,ff,chain:!!chain,q:techQ.length,live:chainS.live.length,tws:tweens.map(w=>({d:w.d,t:+w.t.toFixed(2),fn:String(w.fn).slice(0,90)}))}),pzCount:()=>PUZZLES.length,pzTag:()=>PUZZLES[pzIdx]&&PUZZLES[pzIdx].tag,fx:()=>parts.length,ok:()=>({pierce:OK_PIERCE,diveY:OK_DIVE_Y}),okSet:(p,y)=>{if(p!=null)OK_PIERCE=+p;if(y!=null)OK_DIVE_Y=+y;},setPos:(list,side)=>{mode='puzzle';humanSide='w';pzEnded=true;$('pzBar').classList.remove('on');$('result').classList.remove('on');$('pzDone').classList.remove('on');puzzleSetup(list,side||'w');const t=$('title');t.classList.add('hide');t.classList.remove('leaving');CAM.shot=topShot();busy=true;setTimeout(()=>{busy=false;startHuman();},900);},startPuzzle:i=>startPuzzle(i),vo:()=>({loaded:Object.values(voBuf).filter(b=>b&&b!=='loading').length,cur:voCur&&{start:+voCur.start.toFixed(2),end:+voCur.end.toFixed(2),prio:voCur.prio},t:AC&&+AC.currentTime.toFixed(2)}),sd:()=>[stallN,sdStage],gmInfo:()=>({depth:gmDepthDone,nodes:gmNodes,ms:gmLastMs,maxd:GM_MAXD,budget:GM_MS}),sim:(lw,lb,maxP)=>{const snap=pieces.map(q=>({q,f:q.f,r:q.r,hp:q.hp,alive:q.alive,t:q.t,max:q.max,bare:q.bare,walked:q.walked,moved:q.moved,bonus:q.bonus}));let side='w',n=0,res='draw';
   while(n<maxP){cpuLevel=side==='w'?lw:lb;const c=cpuChoose(side);if(!c){res='nomove';break;}const [p0,m0]=c;if(m0.attack)m0.roll=rollDmg(m0);if(m0.fork)m0.hits.forEach(h=>h.roll=rollDmg(h));make(p0,m0,false);n++;if(!kingOf('w')){res='b';break;}if(!kingOf('b')){res='w';break;}side=side==='w'?'b':'w';}
   for(const s0 of snap)Object.assign(s0.q,{f:s0.f,r:s0.r,hp:s0.hp,alive:s0.alive,t:s0.t,max:s0.max,bare:s0.bare,walked:s0.walked,moved:s0.moved,bonus:s0.bonus});lastMove=null;lastMover={w:null,b:null};discBuff={w:null,b:null};cpuLevel='normal';return [res,n];},setLv:v=>{cpuLevel=v;},timeCpu:(side,n)=>{const out=[];for(const lv of ['easy','normal','hard']){cpuLevel=lv;const t=performance.now();const r=cpuChoose(side);out.push([lv,Math.round(performance.now()-t),r&&('abcdefgh'[r[0].f]+r[0].r+'>'+'abcdefgh'[r[1].f]+r[1].r)]);}cpuLevel='normal';return out;},barTest:(from,to)=>{const q=pieces.find(x=>x.alive);const b=hpBar(q);b.shown=from;b.lag=from;drawBar(b);b.shown=to;b.lag=to;drawBar(b);const out=[];const t0=performance.now();return new Promise(res=>{const iv=setInterval(()=>{drawBar(b);out.push(b.disp);if(performance.now()-t0>700){clearInterval(iv);scene.remove(b.spr);res(out);}},60);});},tapSq:sq=>uiTap({f:'abcdefgh'.indexOf(sq[0]),r:+sq[1]}),ui:()=>({sel:sel&&('abcdefgh'[sel.f]+sel.r),skill:uiSkill,pending:!!uiPending,runes:runeG.children.length}),tech:(n,s)=>showTech(n,s),aim(p,m){focus(p);openPad();setTimeout(()=>{choose(m);padInfo(m);},450);},set speed(v){dbgSpeed=v},pieces,get busy(){return busy},get over(){return over},get turn(){return turnSide},start,playerMove:(p,m)=>playerMove(p,m),movesOfT,cpuChoose,skillMoves,forkMove,get sel(){return sel}};
 })();
