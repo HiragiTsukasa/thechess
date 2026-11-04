@@ -3323,7 +3323,9 @@ const BGM={
  ranked:{f:'bgm/ranked.mp3',s:0.0260,e: 73.9124,vol:.40},   /* Devil Disaster */
  home  :{f:'bgm/home.mp3'  ,s:22.715,e:119.3420,vol:.34,head:0.0058}  /* Truly 2。イントロは初回だけ鳴らし、2周目からは 22.7s へ戻る */
 };
-const BGM_FADE=.9,BGM_KEEP=240;      /* 入れ替えのフェード秒／デコード済みで残す合計秒数。通常戦闘曲とベアキング曲が同時に収まる値 */
+const BGM_FADE=.9,BGM_KEEP=250;      /* 入れ替えのフェード秒／デコード済みで残す合計秒数。
+   戦闘曲58.9+ベアキング172.4=231.3 は 240 に収まるが、ランク曲73.9+172.4=246.3 は収まらない。
+   240 のままだと、ランクマでベアキング曲を読んだ先から捨ててしまい、二部構成にならない。 */
 let bgmKey=null,bgmNode=null,bgmAt=0;
 /* 演出のあいだ曲を黙らせる。ベアキング確定の演出中と、キング撃破〜リザルトまで。
    bgmWant がここを見て null を返すので、フェードアウトして無音になる。 */
@@ -3332,12 +3334,14 @@ const bgmLive=new Map();             /* まだ音を出しているノード →
 function bgmOn(){try{return RKS.bgm!==false;}catch(e){return true;}}
 function bgmSweep(all){
  const live=new Set(bgmLive.values());
+ const tnow=performance.now();
  const ks=Object.keys(BGM).filter(k=>BGM[k].buf);
  let sum=ks.reduce((a,k)=>a+BGM[k].buf.duration,0);
  ks.sort((a,b)=>(BGM[a].used||0)-(BGM[b].used||0));
  for(const k of ks){
   if(!all&&sum<=BGM_KEEP)break;
   if(live.has(k))continue;
+  if(!all&&tnow-(BGM[k].used||0)<8000)continue;   /* 読み込んだ直後のものを捨てない（読み直しの無限ループ防止） */
   sum-=BGM[k].buf.duration;BGM[k].buf=null;}}
 function bgmLoad(k){const t=BGM[k];if(!t||!AC)return null;
  if(t.buf){t.used=performance.now();return t.buf;}
@@ -3387,6 +3391,7 @@ function bgmTick(now){
   /* ベアキング曲は3分あってデコードに1秒以上かかる。駒が残り少なくなった時点で先に読む */
   if((w==='battle'||w==='ranked')&&!BGM.bare.buf&&!BGM.bare.loading&&
      ['w','b'].some(sd=>pieces.filter(q=>q.alive&&q.side===sd).length<=2))bgmLoad('bare');
+  bgmSweep();                 /* 予算超過を持ち越さない。鍵は4つなので毎tickでも軽い */
   if(w===bgmKey)return;
   if(!w){if(bgmNode){bgmStop();setTimeout(()=>bgmSweep(1),(BGM_FADE+.3)*1000);}return;}
   /* 読み込みが間に合わないときに古い曲を鳴らし続けると、
