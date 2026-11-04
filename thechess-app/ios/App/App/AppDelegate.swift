@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import AVFoundation
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,8 +8,44 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // WebView の中には AVAudioSession を押さえる主がいない。アプリ側で押さえる。
+        // ここを塞がないと、電話や他アプリから戻ったあと二度と音が鳴らない。
+        configureAudioSession()
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(audioInterrupted(_:)),
+            name: AVAudioSession.interruptionNotification, object: nil)
+        // SceneDelegate がある構成では applicationDidBecomeActive が呼ばれないので通知で受ける
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(audioBecameActive),
+            name: UIApplication.didBecomeActiveNotification, object: nil)
         return true
+    }
+
+    /// .ambient + .mixWithOthers … 他アプリの音楽を止めない。消音スイッチに従う。
+    /// .playback にすると人の音楽を止めてしまうので使わない。
+    private func configureAudioSession() {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+            try session.setActive(true)
+        } catch {
+            // 取れなくても落とさない。次の復帰でまた取りにいく。
+        }
+    }
+
+    /// 電話やアラームの割り込みが終わったら、場所を取り直す
+    @objc private func audioInterrupted(_ note: Notification) {
+        guard
+            let info = note.userInfo,
+            let raw = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+            let type = AVAudioSession.InterruptionType(rawValue: raw)
+        else { return }
+        if type == .ended { configureAudioSession() }
+    }
+
+    /// 前面に戻ったときも取り直す
+    @objc private func audioBecameActive() {
+        configureAudioSession()
     }
 
     func applicationWillResignActive(_ application: UIApplication) {

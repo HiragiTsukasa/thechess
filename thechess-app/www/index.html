@@ -3435,19 +3435,31 @@ function shotFrame(now){
   try{const c=cpuChoose(humanSide);if(c)playerMove(c[0],c[1]);}catch(e){}
  }
 }
-/* 最終手段：AudioContext ごと作り直す。
-   中断から resume で戻らない個体があるため。古い context に属するバッファは
-   全部無効になるので、SE も声も BGM も読み直す。 */
-let acFail=0,acReAt=-20000;   /* 最初の1回は待たせない */
-function acRebuild(){
+/* ── 音の復帰 ───────────────────────────────────────────
+   iOS はアプリを離れると AudioContext を止める。WebView の中には
+   AVAudioSession を取り直す主がいないので、戻ってきても誰も起こさない。
+   さらに厄介なのが「動いているふりをして止まっている」状態で、
+   resume は通り state も running になるのに currentTime が進まない＝鳴らない。
+   state だけ見ていては気づけないので、時計が進んだかどうかで判定する。 */
+let acFail=0,acReAt=-20000,acT=-1,acTAt=0;   /* 最初の作り直しは待たせない */
+function audioRebuild(){
  try{if(AC)AC.close();}catch(e){}
- AC=null;NB=null;
- bgmNode=null;bgmKey=null;bgmAt=0;bgmHidden=0;bgmLive.clear();
- for(const k in BGM){BGM[k].buf=null;BGM[k].loading=false;BGM[k].fail=0;}
- for(const k in SBUF)delete SBUF[k];
- for(const k in voBuf)delete voBuf[k];
- voCur=null;sbStarted=false;
- try{audio();}catch(e){}            /* 新しい context を作り、SE と声を読み直す */
+ AC=null;
+ try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){AC=null;}
+ if(!AC)return;
+ AC.__st=0;
+ AC.onstatechange=()=>{try{if(AC.state!=='running')bgmHidden=1;}catch(e){}};
+ /* 音の中身は作り直さない。AudioBuffer は作った文脈に縛られないので、
+    新しい文脈でもそのまま鳴る（BGM 6.5MB の読み直しが起きない）。 */
+ bgmNode=null;bgmKey=null;bgmAt=0;bgmHidden=0;bgmLive.clear();voCur=null;
+ acT=-1;acTAt=0;
+ try{const q=AC.resume();if(q&&q.catch)q.catch(()=>{});}catch(e){}
+}
+function audioWake(){
+ try{
+  if(!AC){audio();return;}
+  if(AC.state!=='running'){const q=AC.resume();if(q&&q.catch)q.catch(()=>{});}
+ }catch(e){}
 }
 let bgmTryAt=0;
 function bgmTick(now){
@@ -3456,13 +3468,18 @@ function bgmTick(now){
     visibilitychange が来ない止まり方もあるので、イベントに頼らず毎tickで状態を見る。
     止まっていたら resume を叩き、running に戻った最初のtickで鳴らし直す。 */
  if(!AC){acFail=0;}
+ else if(document.visibilityState!=='visible'){acT=-1;acTAt=0;}   /* 裏では止まっていて当たり前 */
  else if(AC.state!=='running'){bgmHidden=1;
   if(now-bgmTryAt>1000){bgmTryAt=now;acFail++;
    try{const q=AC.resume();if(q&&q.catch)q.catch(()=>{});}catch(e){}
    /* 4秒叩いても戻らなければ context ごと作り直す（20秒に1回まで） */
-   if(acFail>=4&&now-acReAt>20000){acReAt=now;acFail=0;acRebuild();}}
+   if(acFail>=4&&now-acReAt>20000){acReAt=now;acFail=0;audioRebuild();}}
   return;}
- else{acFail=0;if(bgmHidden)bgmRedo();}
+ else{acFail=0;
+  const ct=AC.currentTime;                    /* running でも時計が止まっていることがある */
+  if(ct>acT+.01){acT=ct;acTAt=now;}
+  else if(acTAt&&now-acTAt>700&&now-acReAt>20000){acReAt=now;audioRebuild();return;}
+  if(bgmHidden)bgmRedo();}
  try{
   const w=bgmWant();
   /* ベアキング曲は3分あってデコードに1秒以上かかる。駒が残り少なくなった時点で先に読む */
@@ -3488,14 +3505,21 @@ function bgmRedo(){
 }
 /* iOS はダブルタップとピンチで勝手に拡大する。盤も UI も固定なので、どちらも殺す。
    一度ズームすると戻す手段が無く、画面が壊れたままになる。 */
-/* iOS は操作なしの resume を拒むことがある。どこを触っても復帰を試す。 */
-for(const ev of ['pointerdown','touchend'])
- document.addEventListener(ev,()=>{try{if(!AC||AC.state!=='running')audio();}catch(e){}},{capture:true,passive:true});
+/* 聞き耳を外さない。触られたときと、前に出てきたとき、毎回起こしにいく。
+   もう動いていれば何もしないので安い。 */
+for(const ev of ['pointerdown','touchstart','touchend'])
+ document.addEventListener(ev,audioWake,{capture:true,passive:true});
+for(const ev of ['pageshow','focus'])
+ window.addEventListener(ev,()=>{acT=-1;acTAt=0;audioWake();});
+try{const CA=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;
+ if(CA&&CA.addListener)CA.addListener('appStateChange',st=>{if(st&&st.isActive){acT=-1;acTAt=0;audioWake();}});}catch(e){}
+setTimeout(audioWake,0);                      /* 許されていれば最初のタップは要らない */
 for(const ev of ['gesturestart','gesturechange','gestureend'])
  document.addEventListener(ev,e=>e.preventDefault(),{passive:false});
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 document.addEventListener('visibilitychange',()=>{
  if(document.visibilityState!=='visible'){bgmHidden=1;return;}
+ acT=-1;acTAt=0;audioWake();
  if(!AC){bgmHidden=0;return;}
  AC.resume().then(bgmRedo,bgmRedo);     /* resume が拒まれても作り直す */
 });
