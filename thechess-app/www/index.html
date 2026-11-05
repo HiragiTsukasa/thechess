@@ -1976,7 +1976,7 @@ async function matePlayback(){
   const dirR=new THREE.Vector3().subVectors(kt,r.fr[0].pp).setY(0);
   if(dirR.lengthSq()<.01)dirR.set(0,0,1);dirR.normalize();
   const sdR=new THREE.Vector3(-dirR.z,0,dirR.x);
-  for(let n=0;n<2;n++){
+  for(let n=0;n<2;n++){const last=n===1;
     tm.visible=true;lean(tm,dirR,0);tm.position.copy(kt);tm.quaternion.copy(ktq);
     const cam=u=>{const q=replayShot(pm.position,kt,pool[n],dirR,sdR);
       q.pos.y+=.18*u;                      /* 寄るほど少しだけ持ち上がる */
@@ -1999,12 +1999,13 @@ async function matePlayback(){
         px:+pm.position.x.toFixed(3),pz:+pm.position.z.toFixed(3),
         tx:+tm.position.x.toFixed(3),tz:+tm.position.z.toFixed(3),
         cx:+CAM.pos.x.toFixed(3),cz:+CAM.pos.z.toFixed(3),cy:+CAM.pos.y.toFixed(3)});});
-    await rafPlay(170,()=>{});}
+    /* 倒れたところを見届けてから次の視点へ。すぐ切ると当たった実感が残らない */
+    await rafPlay(last?300:560,()=>cam(1));}
   lean(tm,dirR,0);
   if(rp)rp.classList.remove('on');
   pm.position.copy(kp);pm.quaternion.copy(kq);
-  tm.position.copy(kt);tm.quaternion.copy(ktq);tm.visible=kv;
-  mateRec=null;}
+  /* 最後ののけぞりは戻さない。戻すと王が起き上がってもう一度倒れる */
+  tm.visible=kv;mateRec=null;return true;}
 function finisher(k,dir){
   const crown=new THREE.Group();const mat=k.mesh.userData.mat;
   const a=new THREE.Mesh(new THREE.BoxGeometry(.06,.23,.06),mat),b=new THREE.Mesh(new THREE.BoxGeometry(.16,.06,.06),mat);b.position.y=.03;crown.add(a,b);
@@ -3080,8 +3081,9 @@ async function mainAttack(p,m,ev,foe,name,u){
       lean(p.mesh,dir,0);p.mesh.position.y=0;}
     await fl;await wait(.3);scene.remove(hb.spr);return;}
   SFX.crack();
-  if(mate&&MATE_CAM===7)await matePlayback();
-  if(mate){await tween(.38,k=>{lean(tgt.mesh,dir,.38+1.05*eIn(k));tgt.mesh.position.copy(tp).addScaledVector(dir,.14+.25*eIn(k));});
+  let rpLean=false;
+  if(mate&&MATE_CAM===7)rpLean=await matePlayback();
+  if(mate){if(!rpLean)await tween(.38,k=>{lean(tgt.mesh,dir,.38+1.05*eIn(k));tgt.mesh.position.copy(tp).addScaledVector(dir,.14+.25*eIn(k));});
     tgt.mesh.visible=false;scene.remove(hb.spr);shards(tgt,dir);SFX.shatter();CAM.shake=.6;burst(new THREE.Vector3(tp.x,.08,tp.z),22,dustMat,1.8,.9,1.5,2.4);}
   else if(ev.overkill){scene.remove(hb.spr);overkillBoom(tp,.55);obliterate(tgt,5);craterAt(tp);await wait(.9);}
   else{scene.remove(hb.spr);await crumbleFly(tgt,dir,ev.hp0>=tgt.max);}
