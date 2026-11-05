@@ -2951,7 +2951,8 @@ const OKS={
 let OK_PIERCE=1.2,OK_DIVE_Y=1.55;
 let FK_PATH=1;      /* 0=毎回自分のマスへ戻る  1=三角形の経路 */
 let OK_CAM=9,OK_FAR=3.4;   /* 9=即肩越しと追従をランダムに選ぶ */
-let MATE_CAM=23;           /* 0〜9=固定の構え 20=1種をランダム 21=3カット 22=リプレイ 23=見せ方ごとランダム */
+let MATE_CAM=22;           /* 決めはリプレイ固定。構えは追従8種から毎回2つ引く。
+                              0〜9=固定の構え 20=1種をランダム 21=3カット 23=見せ方ごとランダム */
 let mateNow=22;            /* この一撃で実際に使う見せ方 */
 let OK_SH_ANG=25,OK_SH_Y=.45,OK_SH_R=1.0;  /* 肩越しの振り角・高さ・引き */  /* 長距離オーバーキルのカメラ。0=追従 1=肩越し即 2=途中で肩越し 3=横からのパン */
 function overkillBoom(tp,y){OKS.impact();hitSlow(.8,.55);CAM.shake=1.7;CAM.fovKick=14;const fl=$('sdFlash');if(fl){fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');}
