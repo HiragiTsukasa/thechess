@@ -1992,7 +1992,7 @@ async function matePlayback(){
     {const hp2=new THREE.Vector3((kt.x+pm.position.x)/2,.7,(kt.z+pm.position.z)/2);
      shock(hp2,2.4,0xf3c86a);burst(hp2,16,sparkMat,4.2,.45,5,1);CAM.shake=.85;CAM.fovKick=7;
      try{SFX.hit(2);}catch(e){}}
-    await rafPlay(340,k=>{const e=eIn(k);
+    await rafPlay(440,k=>{const e=eIn(k);
       lean(tm,dirR,.38+1.05*e);tm.position.copy(kt).addScaledVector(dirR,.14+.25*e);
       cam(.7+k*.3);
       if(window.__RP)__RP.push({ev:'hit',n,k:+k.toFixed(3),t:performance.now(),
@@ -2000,7 +2000,7 @@ async function matePlayback(){
         tx:+tm.position.x.toFixed(3),tz:+tm.position.z.toFixed(3),
         cx:+CAM.pos.x.toFixed(3),cz:+CAM.pos.z.toFixed(3),cy:+CAM.pos.y.toFixed(3)});});
     /* 倒れたところを見届けてから次の視点へ。すぐ切ると当たった実感が残らない */
-    await rafPlay(last?300:560,()=>cam(1));}
+    await rafPlay(last?560:1050,()=>cam(1));}
   lean(tm,dirR,0);
   if(rp)rp.classList.remove('on');
   pm.position.copy(kp);pm.quaternion.copy(kq);
@@ -3339,7 +3339,7 @@ async function performFork0(p,m,foe){curActor=p;
   CAM.shot={pos:new THREE.Vector3(home.x+1.2*s,3,home.z+2.8*s),look:new THREE.Vector3(home.x,.4,home.z-1.2*s)};
   await wait(.8);
   for(const h of m.hits){const ev=u.ev.find(e=>e.kind==='fork'&&e.tgt===h.attack);if(!ev)continue;const tgt=h.attack;const tp=tgt.mesh.position.clone();
-    frameTwo(from,tp);await wait(.45);
+    frameTwo(from,tp);await wait(.62);
     const dir=new THREE.Vector3(tp.x-from.x,0,tp.z-from.z);const dist=dir.length();dir.normalize();
     const kill=ev.kill;const crit=h.roll>h.dmax,graze=false,q=crit?1:.5;
     const b=hpBar(tgt);b.shown=ev.hp0;b.lag=ev.hp0;drawBar(b);b.spr.position.set(tp.x,barY(tgt.t),tp.z);
@@ -3363,7 +3363,7 @@ async function performFork0(p,m,foe){curActor=p;
     else{
       await tween(.34,k=>{p.mesh.position.lerpVectors(contact,home,eOut(k));p.mesh.position.y=Math.sin(k*Math.PI)*.25;lean(p.mesh,dir,.3*(1-k));});
       p.mesh.position.copy(home);lean(p.mesh,dir,0);from=home.clone();}
-    await wait(kill?.5:.25);}
+    await wait(kill?.72:.45);}
   if(FK_PATH&&p.mesh.position.distanceTo(home)>.01){   /* 2撃目を見届けてから自分のマスへ帰る */
     const bk=p.mesh.position.clone(),hop2=p.t==='N';
     frameTwo(bk,home);await wait(.3);
