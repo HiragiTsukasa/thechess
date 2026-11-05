@@ -2820,7 +2820,7 @@ const OKS={
 let OK_PIERCE=1.2,OK_DIVE_Y=1.55;
 let FK_PATH=1;      /* 0=毎回自分のマスへ戻る  1=三角形の経路 */
 let OK_CAM=2,OK_FAR=3.4;
-let OK_SH_ANG=60,OK_SH_Y=1.0,OK_SH_R=1.0;  /* 肩越しの振り角・高さ・引き */  /* 長距離オーバーキルのカメラ。0=追従 1=肩越し即 2=途中で肩越し 3=横からのパン */
+let OK_SH_ANG=25,OK_SH_Y=.45,OK_SH_R=1.0;  /* 肩越しの振り角・高さ・引き */  /* 長距離オーバーキルのカメラ。0=追従 1=肩越し即 2=途中で肩越し 3=横からのパン */
 function overkillBoom(tp,y){OKS.impact();hitSlow(.8,.55);CAM.shake=1.7;CAM.fovKick=14;const fl=$('sdFlash');if(fl){fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');}
   fireball(tp.clone().setY(y),1.5);for(let i=0;i<3;i++)setTimeout(()=>shock(tp.clone().setY(i?.04:y),2.4+i*1.5,i?0xff4a3a:0xffb040),i*80);showTech('Overkill','');}
 function barHit(t,ev,tp){const hb=hpBar(t);hb.shown=ev.hp0;hb.lag=ev.hp0;drawBar(hb);hb.spr.position.set(tp.x,barY(t.t),tp.z);hb.shown=ev.hp1;hb.lag=ev.hp1;drawBar(hb);updateTotals();return hb;}
@@ -2870,24 +2870,29 @@ async function missile(p,t,ev){const tp=t.mesh.position.clone(),sp=p.mesh.positi
   const sideOn=()=>({pos:mid.clone().addScaledVector(sd,side*(2.4+L*.42)).setY(2.1+L*.12),
                      look:mid.clone().setY(.5)});
   const cut=far?(OK_CAM===3?sideOn():shoulder()):null;
-  /* 1 は構え・点火から相手側で見る。2・3 は飛び出しまで追ってから切り替える */
+  /* 1 は構え・点火から相手側で見る。2・3 は飛び出しまで追ってから回り込む。
+     どちらも切り替えではなく、カメラが移動して繋ぐ */
   const early=far&&OK_CAM!==2;
-  if(early){CAM.shot=cut;CAM.pos.copy(cut.pos);}else CAM.shot=chase(sp);
+  CAM.shot=early?cut:chase(sp);
   await wait(.6);
   const q0=p.mesh.quaternion.clone(),q1=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir);const hh=.45;const back=sp.clone().addScaledVector(dir,-.55).setY(hh);
   OKS.tilt();await tween(.35,k=>{p.mesh.quaternion.copy(q0).slerp(q1,eIO(k));p.mesh.position.lerpVectors(sp,back,eIO(k));if(early)CAM.shot=cut;});
   OKS.ignite();for(let i=0;i<10;i++)setTimeout(()=>burst(back.clone().addScaledVector(dir,-.2),3,dustMat,.8,.6,.6,1.8),i*30);
   await tween(.3,k=>{p.mesh.position.copy(back).addScaledVector(sd,Math.sin(k*60)*.02);if(early)CAM.shot=cut;});
   OKS.fly(.2+L*.05);let tr=0;const end=tp.clone().addScaledVector(dir,-.3).setY(hh);
-  const cutAt=.42;
-  let swapped=early;
+  const cutAt=.30,BLEND=.34;   /* 飛行の3割から、3割強かけて肩越しへ回り込む */
   let okDone=false;const okFire=()=>{if(okDone)return;okDone=true;
     CAM.shot=far?(OK_CAM===3?sideOn():shoulder())
       :{pos:tp.clone().addScaledVector(sd,side*2.6).addScaledVector(dir,-2.2).setY(1.6),look:tp.clone().setY(.6)};
     overkillBoom(tp,.55);const hb=barHit(t,ev,tp);scene.remove(hb.spr);obliterate(t,5);craterAt(tp);};
   await tween(.2+L*.05,(k,dt)=>{p.mesh.position.lerpVectors(back,end,eIn(k));if(p.mesh.position.distanceTo(tp)<=OK_PIERCE)okFire();
-    if(far&&!swapped&&k>=cutAt){swapped=true;CAM.shot=cut;CAM.pos.copy(cut.pos);CAM.look.copy(cut.look);}
-    if(far&&swapped)CAM.shot=cut; else ride(p.mesh.position.clone().setY(0));
+    if(!far||early){if(early)CAM.shot=cut;else ride(p.mesh.position.clone().setY(0));}
+    else{const t=(k-cutAt)/BLEND;
+      if(t<=0)ride(p.mesh.position.clone().setY(0));
+      else if(t<1){const cs=chase(p.mesh.position.clone().setY(0)),e=eIO(t);
+        const q={pos:cs.pos.clone().lerp(cut.pos,e),look:cs.look.clone().lerp(cut.look,e)};
+        CAM.shot=q;CAM.pos.copy(q.pos);CAM.look.copy(q.look);}
+      else{CAM.shot=cut;CAM.pos.copy(cut.pos);CAM.look.copy(cut.look);}}
     tr+=dt;
     if(tr>.012){tr=0;const tail=p.mesh.position.clone().addScaledVector(dir,-.1);const f=new THREE.Mesh(new THREE.SphereGeometry(.12,8,6),new THREE.MeshBasicMaterial({color:new THREE.Color(0xffa040).convertSRGBToLinear(),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));f.position.copy(tail);scene.add(f);tween(.3,q=>{f.scale.setScalar(1+q);f.material.opacity=1-q;}).then(()=>scene.remove(f));burst(tail,1,dustMat,.3,.9,.6,2.2);}});
   okFire();
