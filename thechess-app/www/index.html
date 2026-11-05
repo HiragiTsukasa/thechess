@@ -2853,7 +2853,11 @@ async function meteor(p,t,ev,u){const tp=t.mesh.position.clone(),ap=p.mesh.posit
   await tween(.3,k=>{p.mesh.position.y=Math.sin(k*Math.PI)*.25;});p.mesh.position.set(tp.x,0,tp.z);landingLive(p,u,tp);await wait(.6);}
 async function missile(p,t,ev){const tp=t.mesh.position.clone(),sp=p.mesh.position.clone();const dir=new THREE.Vector3(tp.x-sp.x,0,tp.z-sp.z).normalize();const sd=new THREE.Vector3(-dir.z,0,dir.x);const L=sp.distanceTo(tp);
   const mid=sp.clone().lerp(tp,.5);const side=(mid.clone().addScaledVector(sd,1).length()>mid.clone().addScaledVector(sd,-1).length())?1:-1;
-  const chase=c=>({pos:c.clone().addScaledVector(sd,side*2.1).addScaledVector(dir,-1.6).setY(1.15),look:c.clone().addScaledVector(dir,1.4).setY(.45)});
+  /* 距離が伸びるほど引いて高く構え、的も画に入れる。遅れずに付いていけるよう毎フレーム置き直す */
+  const back0=1.6+L*.17,sideK=2.1+L*.1,hiK=1.15+L*.07;
+  const chase=c=>({pos:c.clone().addScaledVector(sd,side*sideK).addScaledVector(dir,-back0).setY(hiK),
+                   look:c.clone().lerp(tp,.45).addScaledVector(dir,.6).setY(.5)});
+  const ride=c=>{const cs=chase(c);CAM.shot=cs;CAM.pos.copy(cs.pos);CAM.look.copy(cs.look);return cs;};
   /* 遠いと追従カメラが置いていかれる。相手側に先回りして、飛んでくるところを受け止める */
   const far=L>OK_FAR&&OK_CAM>0;
   const shoulder=()=>({pos:tp.clone().addScaledVector(dir,1.7).addScaledVector(sd,side*1.5).setY(1.25),
@@ -2877,9 +2881,8 @@ async function missile(p,t,ev){const tp=t.mesh.position.clone(),sp=p.mesh.positi
       :{pos:tp.clone().addScaledVector(sd,side*2.6).addScaledVector(dir,-2.2).setY(1.6),look:tp.clone().setY(.6)};
     overkillBoom(tp,.55);const hb=barHit(t,ev,tp);scene.remove(hb.spr);obliterate(t,5);craterAt(tp);};
   await tween(.2+L*.05,(k,dt)=>{p.mesh.position.lerpVectors(back,end,eIn(k));if(p.mesh.position.distanceTo(tp)<=OK_PIERCE)okFire();
-    if(far){if(!swapped&&k>=cutAt){swapped=true;CAM.shot=cut;CAM.pos.copy(cut.pos);}
-      if(swapped){CAM.shot=cut;}else{const cs=chase(p.mesh.position.clone().setY(0));CAM.shot=cs;CAM.pos.lerp(cs.pos,.35);}}
-    else{const cs=chase(p.mesh.position.clone().setY(0));CAM.shot=cs;CAM.pos.lerp(cs.pos,.35);}
+    if(far&&!swapped&&k>=cutAt){swapped=true;CAM.shot=cut;CAM.pos.copy(cut.pos);CAM.look.copy(cut.look);}
+    if(far&&swapped)CAM.shot=cut; else ride(p.mesh.position.clone().setY(0));
     tr+=dt;
     if(tr>.012){tr=0;const tail=p.mesh.position.clone().addScaledVector(dir,-.1);const f=new THREE.Mesh(new THREE.SphereGeometry(.12,8,6),new THREE.MeshBasicMaterial({color:new THREE.Color(0xffa040).convertSRGBToLinear(),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));f.position.copy(tail);scene.add(f);tween(.3,q=>{f.scale.setScalar(1+q);f.material.opacity=1-q;}).then(()=>scene.remove(f));burst(tail,1,dustMat,.3,.9,.6,2.2);}});
   okFire();
