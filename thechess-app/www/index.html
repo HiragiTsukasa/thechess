@@ -5145,26 +5145,6 @@ const TDS=[{f:td2,s:.70,dy:0}];
 function layersOf(p,ri,ti){return p.layers(ri,ti).concat(RANKS[ri].t===0?[]:TDS[0].f(ri,ti,MAT[ri]).map(l=>({...l,td:1})));}
 
 
-/* 斜めに走る細い光沢（暗くはしない・継ぎ目なくループ） */
-const GUX=.793,GUY=.610,GCYC=4,GPER=5.2;
-let NOWT=0;
-function sheen(t,cx,cy,w,h,str){ t=NOWT;
- const ba=Math.max(0,Math.min(1,str*1.45));
- const L=w*1.45,N=GCYC,ph=((t/GPER)%1+1)%1,s0=-L*(N/2)+ph*L;
- const gr=sc.createLinearGradient(cx+GUX*s0,cy+GUY*s0,cx+GUX*(s0+L*N),cy+GUY*(s0+L*N));
- const BR='rgba(255,255,255,'+ba+')',B2='rgba(255,255,255,'+(ba*.3)+')',Z='rgba(255,255,255,0)';
- const cl=v=>Math.max(0,Math.min(1,v));
- for(let i=0;i<N;i++){const p=i/N,u=1/N;
-  gr.addColorStop(cl(p),Z);
-  gr.addColorStop(cl(p+u*.40),Z);
-  gr.addColorStop(cl(p+u*.455),B2);
-  gr.addColorStop(cl(p+u*.5),BR);
-  gr.addColorStop(cl(p+u*.545),B2);
-  gr.addColorStop(cl(p+u*.60),Z);
-  gr.addColorStop(cl(p+u*.999),Z);}
- sc.save();sc.globalCompositeOperation='source-atop';sc.fillStyle=gr;sc.fillRect(0,0,SW,SH);sc.restore();}
-
-
 function paintEm(cv,W,ri,ti){const H=Math.round(W*145/120);
  const d=Math.min(2.5,devicePixelRatio||1);
  cv.width=Math.round(W*d);cv.height=Math.round(H*d);
@@ -5175,6 +5155,8 @@ function paintEm(cv,W,ri,ti){const H=Math.round(W*145/120);
   if(!l.td&&td){g.translate(60,72.5+td.dy);g.scale(td.s,td.s);g.translate(-60,-72.5);}
   l.f(g);g.restore();});
  return {W,H,col:MAT[ri].b};}
+/* 斜めに走る細い光沢の向き。glossEm が使う */
+const GUX=.793,GUY=.610;
 function glossEm(g,W,H,t,str){const ba=Math.max(0,Math.min(1,(str||.55)*1.45)),L=W*1.45,N=4;
  const ph=((t/5.2)%1+1)%1,s0=-L*(N/2)+ph*L;
  const gr=g.createLinearGradient(W/2+GUX*s0,H/2+GUY*s0,W/2+GUX*(s0+L*N),H/2+GUY*(s0+L*N));
