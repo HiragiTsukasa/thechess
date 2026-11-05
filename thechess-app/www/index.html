@@ -4435,9 +4435,8 @@ function skMark(){for(const it of skItems){const on=uiSkill===it.n;
   /* 選ばれている札は縁の色が濃くなるだけ。大きさは変えない */
   if(it.ok)it.b.style.borderColor=SKHUE[it.n]+(on?'':'55');
   it.ln.setAttribute('stroke-width',on?'3.2':'2.6');
-  if(on){ /* 選ばれた札は弾んでから、ひと回り大きいまま前に出る */
-    it.st=1.26;skTm.push(setTimeout(()=>{it.st=1.12;},160));}
-  else it.st=1;}}
+  /* 大きさは2段階だけ。選ばれた札がひと回り大きい */
+  it.st=on?1.12:1;}}
 /* 札は1枚ずつ指で押しのけられる。他の札は付いてこない */
 function skDragBind(b,it){
   b.addEventListener('pointerdown',e=>{e.stopPropagation();
