@@ -1983,9 +1983,6 @@ async function matePlayback(){
   /* 端末が遅いと収録の実時間が伸びる。直前の 1.6 秒だけを一定の尺で再生する */
   const tEnd=r.fr[r.fr.length-1].t,tBeg=Math.max(0,tEnd-1600),span=Math.max(260,tEnd-tBeg);
   const dur=span,PLAY=Math.min(980,Math.max(700,span*1.15));
-  if(window.__RP)__RP.push({ev:'start',t:performance.now(),frames:r.fr.length,dur:+dur.toFixed(1),play:+PLAY.toFixed(0),
-    f0x:+r.fr[0].pp.x.toFixed(2),f0z:+r.fr[0].pp.z.toFixed(2),
-    fnx:+r.fr[r.fr.length-1].pp.x.toFixed(2),fnz:+r.fr[r.fr.length-1].pp.z.toFixed(2)});
   const pool=[0,1,2,3,4,5,6,7];
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const x=pool[i];pool[i]=pool[j];pool[j]=x;}
   const sample=u=>{const T=tBeg+u*span;let i=1;while(i<r.fr.length-1&&r.fr[i].t<T)i++;
@@ -2005,23 +2002,14 @@ async function matePlayback(){
       q.pos.y+=.18*u;                      /* 寄るほど少しだけ持ち上がる */
       camRig(q);CAM.shot=q;CAM.pos.copy(q.pos);CAM.look.copy(q.look);};
     sample(0);cam(0);
-    if(window.__RP)__RP.push({ev:'pass',n,rig:pool[n],t:performance.now()});
-    await rafPlay(PLAY,k=>{sample(k);cam(k*.7);
-      if(window.__RP)__RP.push({ev:'run',n,k:+k.toFixed(3),t:performance.now(),
-        px:+pm.position.x.toFixed(3),pz:+pm.position.z.toFixed(3),
-        tx:+tm.position.x.toFixed(3),tz:+tm.position.z.toFixed(3),
-        cx:+CAM.pos.x.toFixed(3),cz:+CAM.pos.z.toFixed(3),cy:+CAM.pos.y.toFixed(3)});});
+    await rafPlay(PLAY,k=>{sample(k);cam(k*.7);});
     /* 当たった手応え。これが無いと王が理由もなく倒れて見える */
     {const hp2=new THREE.Vector3((kt.x+pm.position.x)/2,.7,(kt.z+pm.position.z)/2);
      shock(hp2,2.4,0xf3c86a);burst(hp2,16,sparkMat,4.2,.45,5,1);CAM.shake=.85;CAM.fovKick=7;
      try{SFX.hit(2);}catch(e){}}
     await rafPlay(340,k=>{const e=eIn(k);
       lean(tm,dirR,.38+1.05*e);tm.position.copy(kt).addScaledVector(dirR,.14+.25*e);
-      cam(.7+k*.3);
-      if(window.__RP)__RP.push({ev:'hit',n,k:+k.toFixed(3),t:performance.now(),
-        px:+pm.position.x.toFixed(3),pz:+pm.position.z.toFixed(3),
-        tx:+tm.position.x.toFixed(3),tz:+tm.position.z.toFixed(3),
-        cx:+CAM.pos.x.toFixed(3),cz:+CAM.pos.z.toFixed(3),cy:+CAM.pos.y.toFixed(3)});});
+      cam(.7+k*.3);});
     /* 倒れたところを見届けてから次の視点へ。すぐ切ると当たった実感が残らない */
     await rafPlay(last?400:620,()=>cam(1));}
   lean(tm,dirR,0);
@@ -3108,13 +3096,10 @@ async function mainAttack(p,m,ev,foe,name,u){
       lean(p.mesh,dir,0);p.mesh.position.y=0;}
     await fl;await wait(.3);scene.remove(hb.spr);return;}
   SFX.crack();
-  if(mate&&window.__RP)__RP.push({ev:'realHit',t:performance.now()});
   if(mate){
     /* まず本番の一撃を最後まで見せる。ここで切るとリプレイが2撃目に見える */
     await tween(.38,k=>{lean(tgt.mesh,dir,.38+1.05*eIn(k));tgt.mesh.position.copy(tp).addScaledVector(dir,.14+.25*eIn(k));});
-    if(window.__RP)__RP.push({ev:'realLeanDone',t:performance.now()});
     if(mateNow===22){await rafPlay(620,()=>{});await matePlayback();}
-    if(window.__RP)__RP.push({ev:'rpDone',t:performance.now()});
     tgt.mesh.visible=false;scene.remove(hb.spr);shards(tgt,dir);SFX.shatter();CAM.shake=.6;burst(new THREE.Vector3(tp.x,.08,tp.z),22,dustMat,1.8,.9,1.5,2.4);}
   else if(ev.overkill){scene.remove(hb.spr);overkillBoom(tp,.55);obliterate(tgt,5);craterAt(tp);await wait(.9);}
   else{scene.remove(hb.spr);await crumbleFly(tgt,dir,ev.hp0>=tgt.max);}
