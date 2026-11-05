@@ -3339,7 +3339,7 @@ async function performFork0(p,m,foe){curActor=p;
   CAM.shot={pos:new THREE.Vector3(home.x+1.2*s,3,home.z+2.8*s),look:new THREE.Vector3(home.x,.4,home.z-1.2*s)};
   await wait(.8);
   for(const h of m.hits){const ev=u.ev.find(e=>e.kind==='fork'&&e.tgt===h.attack);if(!ev)continue;const tgt=h.attack;const tp=tgt.mesh.position.clone();
-    frameTwo(from,tp);await wait(.62);
+    frameTwo(from,tp);await wait(.3);
     const dir=new THREE.Vector3(tp.x-from.x,0,tp.z-from.z);const dist=dir.length();dir.normalize();
     const kill=ev.kill;const crit=h.roll>h.dmax,graze=false,q=crit?1:.5;
     const b=hpBar(tgt);b.shown=ev.hp0;b.lag=ev.hp0;drawBar(b);b.spr.position.set(tp.x,barY(tgt.t),tp.z);
@@ -3363,7 +3363,7 @@ async function performFork0(p,m,foe){curActor=p;
     else{
       await tween(.34,k=>{p.mesh.position.lerpVectors(contact,home,eOut(k));p.mesh.position.y=Math.sin(k*Math.PI)*.25;lean(p.mesh,dir,.3*(1-k));});
       p.mesh.position.copy(home);lean(p.mesh,dir,0);from=home.clone();}
-    await wait(kill?.72:.45);}
+    await wait(kill?1.05:.75);}
   if(FK_PATH&&p.mesh.position.distanceTo(home)>.01){   /* 2撃目を見届けてから自分のマスへ帰る */
     const bk=p.mesh.position.clone(),hop2=p.t==='N';
     frameTwo(bk,home);await wait(.3);
