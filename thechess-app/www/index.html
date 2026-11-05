@@ -2874,11 +2874,12 @@ async function missile(p,t,ev){const tp=t.mesh.position.clone(),sp=p.mesh.positi
      どちらも切り替えではなく、カメラが移動して繋ぐ */
   const early=far&&OK_CAM!==2;
   CAM.shot=early?cut:chase(sp);
-  await wait(.6);
+  if(far){CAM.pos.copy(CAM.shot.pos);CAM.look.copy(CAM.shot.look);}  /* 間を置かずその画から始める */
+  await wait(far?.18:.6);
   const q0=p.mesh.quaternion.clone(),q1=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir);const hh=.45;const back=sp.clone().addScaledVector(dir,-.55).setY(hh);
-  OKS.tilt();await tween(.35,k=>{p.mesh.quaternion.copy(q0).slerp(q1,eIO(k));p.mesh.position.lerpVectors(sp,back,eIO(k));if(early)CAM.shot=cut;});
+  OKS.tilt();await tween(far?.26:.35,k=>{p.mesh.quaternion.copy(q0).slerp(q1,eIO(k));p.mesh.position.lerpVectors(sp,back,eIO(k));if(early)CAM.shot=cut;});
   OKS.ignite();for(let i=0;i<10;i++)setTimeout(()=>burst(back.clone().addScaledVector(dir,-.2),3,dustMat,.8,.6,.6,1.8),i*30);
-  await tween(.3,k=>{p.mesh.position.copy(back).addScaledVector(sd,Math.sin(k*60)*.02);if(early)CAM.shot=cut;});
+  await tween(far?.18:.3,k=>{p.mesh.position.copy(back).addScaledVector(sd,Math.sin(k*60)*.02);if(early)CAM.shot=cut;});
   OKS.fly(.2+L*.05);let tr=0;const end=tp.clone().addScaledVector(dir,-.3).setY(hh);
   const cutAt=.30,BLEND=.34;   /* 飛行の3割から、3割強かけて肩越しへ回り込む */
   let okDone=false;const okFire=()=>{if(okDone)return;okDone=true;
@@ -4421,7 +4422,9 @@ async function uiConfirm(){const p=sel,m=uiPending;const hc=uiSkill?SKCOLOR[uiSk
   const sqs=m.fork?m.hits.map(h=>({f:h.attack.f,r:h.attack.r})):[m];sqs.forEach(q=>shock(new THREE.Vector3(X(q.f),0,Z(q.r)),1.6,hc));
   uiReset();while(runeG.children.length)runeG.remove(runeG.children[0]);
   // the action itself is shown over the shoulder (Laser / Sanctuary / Fork / castling use their own cameras)
-  if(!m.cannon&&!m.heal&&!m.fork&&!m.castle&&!m.recall){const tx=X(m.f)-p.mesh.position.x,tz=Z(m.r)-p.mesh.position.z;const d=new THREE.Vector3(tx,0,tz);if(d.lengthSq()<.01)d.set(0,0,p.side==='w'?-1:1);d.normalize();
+  const okFar=m.attack&&SLIDER(p.t)&&Math.max(Math.abs(m.f-p.f),Math.abs(m.r-p.r))>OK_FAR
+    &&m.dmin-m.attack.hp>=m.attack.max*.5;   /* 長距離の確定オーバーキル。寄りの前置きは省く */
+  if(!okFar&&!m.cannon&&!m.heal&&!m.fork&&!m.castle&&!m.recall){const tx=X(m.f)-p.mesh.position.x,tz=Z(m.r)-p.mesh.position.z;const d=new THREE.Vector3(tx,0,tz);if(d.lengthSq()<.01)d.set(0,0,p.side==='w'?-1:1);d.normalize();
     const sd=new THREE.Vector3(-d.z,0,d.x);const x=p.mesh.position.x,z=p.mesh.position.z;CAM.shot={pos:new THREE.Vector3(x,0,z).addScaledVector(d,-2.1).addScaledVector(sd,.34).setY(1.0),look:new THREE.Vector3(x,0,z).addScaledVector(d,2.4).setY(.32)};
     busy=true;await wait(.55);busy=false;}
   await playerMove(p,m);}
