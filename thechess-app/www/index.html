@@ -4397,15 +4397,19 @@ const SKNOTE={Laser:TR('動かずに直線上を撃つ'),Sanctuary:TR('近くの
 const skListOf=p=>(SKP[p.t]||[]).concat(forkMove(p)?['Fork']:[]);
 const SKNS='http://www.w3.org/2000/svg';
 const skCall=document.createElement('div');skCall.id='skCall';
-skCall.innerHTML='<svg><g id="skLnB"></g><g id="skLn"></g>'
+skCall.innerHTML='<svg>'
+ +'<path id="skStemB" fill="none" stroke="#0a0c0f" stroke-width="5.2" stroke-linecap="round" opacity="0"></path>'
+ +'<g id="skLnB"></g>'
+ +'<path id="skStem" fill="none" stroke="#f2f4f6" stroke-width="2.6" stroke-linecap="round" opacity="0"></path>'
+ +'<g id="skLn"></g>'
  +'<circle id="skDot" r="3.6" fill="#f4f6f8" stroke="#0a0c0f" stroke-width="1.4" opacity="0"></circle></svg>';
 document.body.appendChild(skCall);
-let skP=null,skItems=[],skTm=[],skSide=null,skOff={x:0,y:0},skDrag=null,skT0=0,skMovedAt=-9999;
-function skHide(){skTm.forEach(clearTimeout);skTm=[];skSide=null;skDrag=null;skOff={x:0,y:0};
+let skP=null,skItems=[],skTm=[],skSide=null,skDrag=null,skT0=0,skMovedAt=-9999;
+function skHide(){skTm.forEach(clearTimeout);skTm=[];skSide=null;skDrag=null;
   if(!skP&&!skItems.length)return;skP=null;skItems=[];
   [...skCall.querySelectorAll('b')].forEach(b=>b.remove());
   const g=$('skLn');if(g)g.innerHTML='';const gb=$('skLnB');if(gb)gb.innerHTML='';
-  $('skDot').style.opacity='0';}
+  $('skDot').style.opacity='0';$('skStem').style.opacity='0';$('skStemB').style.opacity='0';}
 /* 2タップ目。その駒の技をぜんぶ出す */
 function skOpen(p){skHide();skP=p;const names=skListOf(p);const on=new Set(modesOf(p));
   const g=$('skLn'),gb=$('skLnB');
@@ -4416,36 +4420,37 @@ function skOpen(p){skHide();skP=p;const names=skListOf(p);const on=new Set(modes
     b.innerHTML='<u></u><small></small>';
     b.firstChild.textContent=n;b.lastChild.textContent=SKNOTE[n]||'';
     if(uiSkill===n)b.classList.add('sel');
-    skDragBind(b);
     b.addEventListener('click',e=>{e.stopPropagation();
       if(performance.now()-skMovedAt<260)return;   /* 押しのけただけ。技は選ばない */
       skTapLabel(n,ok);});
     skCall.appendChild(b);
     const lb=document.createElementNS(SKNS,'path');lb.setAttribute('fill','none');
     lb.setAttribute('stroke','#0a0c0f');lb.setAttribute('stroke-linecap','round');
-    lb.setAttribute('stroke-width',ok?'4.2':'3.6');lb.style.opacity='0';gb.appendChild(lb);
+    lb.setAttribute('stroke-width','5.2');lb.style.opacity='0';gb.appendChild(lb);
     const ln=document.createElementNS(SKNS,'path');ln.setAttribute('fill','none');
     ln.setAttribute('stroke',ok?SKHUE[n]:'#c3c8ce');ln.setAttribute('stroke-linecap','round');
-    ln.setAttribute('stroke-width',ok?'2':'1.5');ln.style.opacity='0';g.appendChild(ln);
+    ln.setAttribute('stroke-width','2.6');ln.style.opacity='0';g.appendChild(ln);
     /* cx,cy は今いる場所。最初は駒元に置いて、そこから目的地へ伸びていく */
-    return {n,ok,b,ln,lb,cx:null,cy:null,s:.72,o:0,st:.72,bob:Math.random()*6.28,born:performance.now()+i*70};});
+    const it={n,ok,b,ln,lb,off:{x:0,y:0},cx:null,cy:null,s:.72,o:0,st:.72,
+      bob:Math.random()*6.28,born:performance.now()+i*70};
+    skDragBind(b,it);return it;});
   skT0=performance.now();skFrame();}
 function skMark(){for(const it of skItems){const on=uiSkill===it.n;
   it.b.classList.toggle('sel',on);
-  it.ln.setAttribute('stroke-width',on?'2.7':it.ok?'2':'1.5');
-  it.lb.setAttribute('stroke-width',on?'5':it.ok?'4.2':'3.6');
+  it.ln.setAttribute('stroke-width',on?'3.2':'2.6');
+  it.lb.setAttribute('stroke-width',on?'6':'5.2');
   if(on){ /* 選ばれた札は一度ふくらんでから落ち着く */
     it.st=1.2;skTm.push(setTimeout(()=>{it.st=1.07;},160));}
   else it.st=1;}}
-/* 吹き出しは指で押しのけられる。ふわっと付いてくる */
-function skDragBind(b){
+/* 札は1枚ずつ指で押しのけられる。他の札は付いてこない */
+function skDragBind(b,it){
   b.addEventListener('pointerdown',e=>{e.stopPropagation();
-    skDrag={id:e.pointerId,x:e.clientX,y:e.clientY,ox:skOff.x,oy:skOff.y,moved:false};
+    skDrag={id:e.pointerId,it,x:e.clientX,y:e.clientY,ox:it.off.x,oy:it.off.y,moved:false};
     try{b.setPointerCapture(e.pointerId);}catch(x){}});
   b.addEventListener('pointermove',e=>{if(!skDrag||skDrag.id!==e.pointerId)return;
     const dx=e.clientX-skDrag.x,dy=e.clientY-skDrag.y;
     if(!skDrag.moved&&Math.hypot(dx,dy)<6)return;
-    skDrag.moved=true;skOff={x:skDrag.ox+dx,y:skDrag.oy+dy};});
+    skDrag.moved=true;it.off={x:skDrag.ox+dx,y:skDrag.oy+dy};});
   const end=e=>{if(!skDrag||skDrag.id!==e.pointerId)return;
     if(skDrag.moved)skMovedAt=performance.now();
     skDrag=null;};
@@ -4507,18 +4512,20 @@ function skFrame(now){if(!skP)return;if(!skP.alive||sel!==skP){skHide();return;}
       if(!b2)break;}
     right=best.right;mid=best.mid;}
   skSide=right;
-  const colX=colOf(right)+skOff.x,midY=mid+skOff.y;
-  /* 根元の向きは札の重心側へ。押しのけられても駒から札の方を向く */
-  const hubA=Math.atan2(midY-a.y,(right?colX:colX-wide)+(right?wide:0)/2-a.x);
-  const hubX=a.x+Math.cos(hubA)*26,hubY=a.y+Math.sin(hubA)*26;
+  const colX=colOf(right),midY=mid;
+  /* 根元は札の重心へ向けて1本。枝はそこから分かれる */
+  let gx0=0,gy0=0;for(const it of skItems){gx0+=it.cx==null?colX:it.cx;gy0+=it.cy==null?midY:it.cy;}
+  gx0/=skItems.length;gy0/=skItems.length;
+  const hubA=Math.atan2(gy0-a.y,gx0-a.x);
+  const hubX=a.x+Math.cos(hubA)*34,hubY=a.y+Math.sin(hubA)*34;
   const ease=.19;                               /* 位置も大きさも追いかけるだけ。瞬間移動させない */
   let y=midY-tot/2,shown=0;
   skItems.forEach((it,i)=>{
     const born=now>=it.born;
-    const tcy=y+hs[i]/2, tcx=right?colX:colX-ws[i];
+    const tcy=y+hs[i]/2+it.off.y, tcx=(right?colX:colX-ws[i])+it.off.x;
     /* ふわふわ：札ごとに位相をずらして上下に揺らす */
     const fy=Math.sin(now/900+it.bob)*3.2, fx=Math.sin(now/1500+it.bob*1.7)*1.8;
-    if(it.cx==null){it.cx=hubX;it.cy=hubY;}
+    if(it.cx==null){it.cx=hubX-(right?0:ws[i]);it.cy=hubY;}
     const gx=born?tcx+fx:hubX-(right?0:ws[i]), gy=born?tcy+fy:hubY;
     it.cx+=(gx-it.cx)*ease; it.cy+=(gy-it.cy)*ease;
     it.s+=((born?it.st:.72)-it.s)*ease;
@@ -4528,19 +4535,21 @@ function skFrame(now){if(!skP)return;if(!skP.alive||sel!==skP){skHide();return;}
     const on=uiSkill===it.n;
     const op=(it.o*(on?1:it.ok?.85:.7));
     it.ln.style.opacity=op.toFixed(3);it.lb.style.opacity=(op*.62).toFixed(3);
-    /* 札の外周のうち、駒に一番近い点へ最短でつなぐ */
-    const x0=it.cx,y0=it.cy-hs[i]/2,x1=it.cx+ws[i],y1=y0+hs[i],R=11;
-    const dL=x0-hubX,dR=hubX-x1,dT=y0-hubY,dB=hubY-y1;
-    const mx=Math.max(dL,dR,dT,dB);let ex,ey;
-    if(mx<=0){ex=it.cx+ws[i]/2;ey=it.cy;}
-    else if(mx===dL){ex=x0;ey=Math.max(y0+R,Math.min(y1-R,hubY));}
-    else if(mx===dR){ex=x1;ey=Math.max(y0+R,Math.min(y1-R,hubY));}
-    else if(mx===dT){ey=y0;ex=Math.max(x0+R,Math.min(x1-R,hubX));}
-    else{ey=y1;ex=Math.max(x0+R,Math.min(x1-R,hubX));}
-    const d2='M'+a.x.toFixed(1)+' '+a.y.toFixed(1)+'L'+ex.toFixed(1)+' '+ey.toFixed(1);
+    /* 根元から枝分かれして、札の縁にぴたりと刺さる。
+       中心から根元の方向へ辺まで伸ばした点を使うので、必ず札に付く */
+    const hw=ws[i]/2*it.s,hh=hs[i]/2*it.s,cx2=it.cx+ws[i]/2,cy2=it.cy;
+    let ux=hubX-cx2,uy=hubY-cy2;const ul=Math.hypot(ux,uy)||1;ux/=ul;uy/=ul;
+    const sx=Math.abs(ux)<1e-4?1e9:hw/Math.abs(ux),sy=Math.abs(uy)<1e-4?1e9:hh/Math.abs(uy);
+    const sN=Math.max(0,Math.min(sx,sy)-1.5);
+    const ex=cx2+ux*sN,ey=cy2+uy*sN;
+    const d2='M'+hubX.toFixed(1)+' '+hubY.toFixed(1)+'L'+ex.toFixed(1)+' '+ey.toFixed(1);
     it.ln.setAttribute('d',d2);it.lb.setAttribute('d',d2);
     if(born)shown=Math.max(shown,it.o);
     y+=hs[i]+PAD;});
+  const d='M'+a.x.toFixed(1)+' '+a.y.toFixed(1)+'L'+hubX.toFixed(1)+' '+hubY.toFixed(1);
+  $('skStem').setAttribute('d',d);$('skStemB').setAttribute('d',d);
+  $('skStem').style.opacity=(shown*.95).toFixed(3);
+  $('skStemB').style.opacity=(shown*.62).toFixed(3);
   $('skDot').setAttribute('cx',a.x.toFixed(1));$('skDot').setAttribute('cy',a.y.toFixed(1));
   $('skDot').style.opacity=(shown*.95).toFixed(3);}
 function uiTap(sq){
