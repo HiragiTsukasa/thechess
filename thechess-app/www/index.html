@@ -2854,12 +2854,6 @@ async function meteor(p,t,ev,u){const tp=t.mesh.position.clone(),ap=p.mesh.posit
 async function missile(p,t,ev){const tp=t.mesh.position.clone(),sp=p.mesh.position.clone();const dir=new THREE.Vector3(tp.x-sp.x,0,tp.z-sp.z).normalize();const sd=new THREE.Vector3(-dir.z,0,dir.x);const L=sp.distanceTo(tp);
   const mid=sp.clone().lerp(tp,.5);const side=(mid.clone().addScaledVector(sd,1).length()>mid.clone().addScaledVector(sd,-1).length())?1:-1;
   const chase=c=>({pos:c.clone().addScaledVector(sd,side*2.1).addScaledVector(dir,-1.6).setY(1.15),look:c.clone().addScaledVector(dir,1.4).setY(.45)});
-  CAM.shot=chase(sp);await wait(.6);
-  const q0=p.mesh.quaternion.clone(),q1=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir);const hh=.45;const back=sp.clone().addScaledVector(dir,-.55).setY(hh);
-  OKS.tilt();await tween(.35,k=>{p.mesh.quaternion.copy(q0).slerp(q1,eIO(k));p.mesh.position.lerpVectors(sp,back,eIO(k));});
-  OKS.ignite();for(let i=0;i<10;i++)setTimeout(()=>burst(back.clone().addScaledVector(dir,-.2),3,dustMat,.8,.6,.6,1.8),i*30);
-  await tween(.3,k=>{p.mesh.position.copy(back).addScaledVector(sd,Math.sin(k*60)*.02);});
-  OKS.fly(.2+L*.05);let tr=0;const end=tp.clone().addScaledVector(dir,-.3).setY(hh);
   /* 遠いと追従カメラが置いていかれる。相手側に先回りして、飛んでくるところを受け止める */
   const far=L>OK_FAR&&OK_CAM>0;
   const shoulder=()=>({pos:tp.clone().addScaledVector(dir,1.7).addScaledVector(sd,side*1.5).setY(1.25),
@@ -2867,9 +2861,17 @@ async function missile(p,t,ev){const tp=t.mesh.position.clone(),sp=p.mesh.positi
   const sideOn=()=>({pos:mid.clone().addScaledVector(sd,side*(2.4+L*.42)).setY(2.1+L*.12),
                      look:mid.clone().setY(.5)});
   const cut=far?(OK_CAM===3?sideOn():shoulder()):null;
-  const cutAt=OK_CAM===1?0:.42;             /* 1=点火直後に切替  2・3=飛行の途中で切替 */
-  if(far&&OK_CAM===1){CAM.shot=cut;CAM.pos.copy(cut.pos);}
-  let swapped=far&&OK_CAM===1;
+  /* 1 は構え・点火から相手側で見る。2・3 は飛び出しまで追ってから切り替える */
+  const early=far&&OK_CAM!==2;
+  if(early){CAM.shot=cut;CAM.pos.copy(cut.pos);}else CAM.shot=chase(sp);
+  await wait(.6);
+  const q0=p.mesh.quaternion.clone(),q1=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir);const hh=.45;const back=sp.clone().addScaledVector(dir,-.55).setY(hh);
+  OKS.tilt();await tween(.35,k=>{p.mesh.quaternion.copy(q0).slerp(q1,eIO(k));p.mesh.position.lerpVectors(sp,back,eIO(k));if(early)CAM.shot=cut;});
+  OKS.ignite();for(let i=0;i<10;i++)setTimeout(()=>burst(back.clone().addScaledVector(dir,-.2),3,dustMat,.8,.6,.6,1.8),i*30);
+  await tween(.3,k=>{p.mesh.position.copy(back).addScaledVector(sd,Math.sin(k*60)*.02);if(early)CAM.shot=cut;});
+  OKS.fly(.2+L*.05);let tr=0;const end=tp.clone().addScaledVector(dir,-.3).setY(hh);
+  const cutAt=.42;
+  let swapped=early;
   let okDone=false;const okFire=()=>{if(okDone)return;okDone=true;
     CAM.shot=far?(OK_CAM===3?sideOn():shoulder())
       :{pos:tp.clone().addScaledVector(sd,side*2.6).addScaledVector(dir,-2.2).setY(1.6),look:tp.clone().setY(.6)};
@@ -3201,8 +3203,7 @@ async function performFork0(p,m,foe){curActor=p;
     tween(.5,k=>{const f=(1-k)*.55;tgt.mesh.userData.mat.emissive.setRGB(f,f*.76,f*.55);});
     if(kill){SFX.crack();scene.remove(b.spr);if(ev.overkill){overkillBoom(tp,.55);obliterate(tgt,5);craterAt(tp);}else crumbleFly(tgt,dir,ev.hp0>=tgt.max);}
     else flinch(tgt,dir,h.roll).then(()=>scene.remove(b.spr));
-    const last=h===m.hits[m.hits.length-1];
-    if(FK_PATH&&!last){        /* 戻らずその場で踏みとどまり、次の的へ向き直る */
+    if(FK_PATH){               /* 戻らずその場で踏みとどまる。帰るのは全部終えてから */
       const stay=contact.clone();
       await tween(.26,k=>{p.mesh.position.lerpVectors(contact,stay,k);p.mesh.position.y=Math.sin(k*Math.PI)*.12;lean(p.mesh,dir,.3*(1-k));});
       p.mesh.position.copy(stay);lean(p.mesh,dir,0);from=stay;}
@@ -3210,11 +3211,12 @@ async function performFork0(p,m,foe){curActor=p;
       await tween(.34,k=>{p.mesh.position.lerpVectors(contact,home,eOut(k));p.mesh.position.y=Math.sin(k*Math.PI)*.25;lean(p.mesh,dir,.3*(1-k));});
       p.mesh.position.copy(home);lean(p.mesh,dir,0);from=home.clone();}
     await wait(kill?.5:.25);}
-  if(FK_PATH&&p.mesh.position.distanceTo(home)>.01){   /* 最後に自分のマスへ戻る */
+  if(FK_PATH&&p.mesh.position.distanceTo(home)>.01){   /* 2撃目を見届けてから自分のマスへ帰る */
     const bk=p.mesh.position.clone(),hop2=p.t==='N';
-    await tween(hop2?.42:.38,k=>{p.mesh.position.lerpVectors(bk,home,eIO(k));
+    frameTwo(bk,home);await wait(.3);
+    await tween(hop2?.5:.46,k=>{p.mesh.position.lerpVectors(bk,home,eIO(k));
       p.mesh.position.y=Math.sin(k*Math.PI)*(hop2?.8:.28);});
-    p.mesh.position.copy(home);}
+    p.mesh.position.copy(home);await wait(.2);}
   hpShow=null;updateTotals();
   await playEvents(p,u,foe);
   syncMeshes();await wait(.3);hideTech();
