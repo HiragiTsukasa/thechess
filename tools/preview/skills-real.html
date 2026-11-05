@@ -31,12 +31,16 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
   <button type="button" data-pos="N">ナイト</button>
   <button type="button" data-pos="P">ポーン</button>
   <span class="grp"><span>キルカメラ</span>
-    <button type="button" data-mt="7">リプレイ</button>
-    <button type="button" data-mt="8">多視点</button>
-    <button type="button" data-mt="9">1種ランダム</button>
+    <button type="button" data-mt="22">リプレイ</button>
+    <button type="button" data-mt="21">多視点</button>
+    <button type="button" data-mt="20">1種ランダム</button></span>
+  <span class="grp"><span>構えを固定</span>
     <button type="button" data-mt="0">攻め手の肩越し</button><button type="button" data-mt="1">王の正面ロー</button>
     <button type="button" data-mt="2">真横すれすれ</button><button type="button" data-mt="3">見下ろし</button>
-    <button type="button" data-mt="4">王の肩越し</button></span>
+    <button type="button" data-mt="4">王の肩越し</button>
+    <button type="button" data-mt="5">足元の広角</button><button type="button" data-mt="6">真俯瞰</button>
+    <button type="button" data-mt="7">望遠の圧縮</button><button type="button" data-mt="8">傾いた肩越し</button>
+    <button type="button" data-mt="9">攻め手の真上</button></span>
   <span id="msg">読み込み中…</span>
 </div>
 <script>
@@ -79,14 +83,15 @@ function load(k){const d=BOARDS[k];if(!G){msg.textContent='読み込み中…';r
   catch(e){msg.textContent='盤面を置けなかった：'+e.message;}}
 [...document.querySelectorAll('#bar button[data-pos]')]
   .forEach(b=>b.addEventListener('click',()=>load(b.getAttribute('data-pos'))));
-const MTN=['攻め手の肩越し','王の正面ロー','真横すれすれ','見下ろし','王の肩越し'];
+const MTN=['攻め手の肩越し','王の正面ロー','真横すれすれ','見下ろし','王の肩越し',
+  '足元の広角','真俯瞰','望遠の圧縮','傾いた肩越し','攻め手の真上'];
 const mtBs=[...document.querySelectorAll('#bar button[data-mt]')];
 const paintMt=v=>mtBs.forEach(b=>b.classList.toggle('on',+b.getAttribute('data-mt')===v));
 mtBs.forEach(b=>b.addEventListener('click',()=>{const v=+b.getAttribute('data-mt');
   if(!G){msg.textContent='読み込み中…';return;}
   G.mateSet(v);paintMt(v);
-  msg.textContent=v===7?'決める直前を、別の視点から2回見直す。':
-    v===8?'決めの瞬間を3つの角度から続けて見せる。':
-    v===9?'決めのカメラを5種から毎回ランダムで選ぶ。':'決めのカメラ：'+MTN[v]+'。';}));
+  msg.textContent=v===22?'決める直前を、別の視点から2回見直す。':
+    v===21?'決めの瞬間を3つの角度から続けて見せる。':
+    v===20?'決めのカメラを10種から毎回ランダムで選ぶ。':'決めのカメラ：'+MTN[v]+'。';}));
 waitG(()=>{load('Q');try{paintMt(G.mate());}catch(e){}});
 </script>

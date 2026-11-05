@@ -1783,7 +1783,8 @@ const UP=new THREE.Vector3(0,1,0);
 function lean(mesh,dir,ang){const k=new THREE.Vector3().crossVectors(UP,dir).normalize();mesh.quaternion.setFromAxisAngle(k,ang);}
 
 // ---- camera ----
-const CAM={target:null,look:new THREE.Vector3(),pos:new THREE.Vector3(0,3,8),fov:64,fovKick:0,shake:0,dir:new THREE.Vector3(0,0,-1)};
+const CAM={target:null,look:new THREE.Vector3(),pos:new THREE.Vector3(0,3,8),fov:64,fovKick:0,shake:0,roll:0,dir:new THREE.Vector3(0,0,-1)};
+const CAM_FOV0=64;
 function camFrom(att,tgt){CAM.target=att;CAM.lookAt=tgt;}
 function updateCam(rdt){
   if(CAM.shot){CAM.pos.lerp(CAM.shot.pos,1-Math.exp(-rdt*4.5));CAM.look.lerp(CAM.shot.look,1-Math.exp(-rdt*6));}
@@ -1797,6 +1798,7 @@ function updateCam(rdt){
   camera.position.copy(CAM.pos);
   if(CAM.shake>0){CAM.shake=Math.max(0,CAM.shake-rdt*1.6);const s=CAM.shake*CAM.shake*.25;camera.position.x+=(Math.random()-.5)*s;camera.position.y+=(Math.random()-.5)*s;camera.position.z+=(Math.random()-.5)*s;}
   camera.lookAt(CAM.look);
+  if(CAM.roll)camera.rotateZ(CAM.roll);   /* 画面ごと傾ける。通常戦闘では使わない */
   CAM.fovKick*=Math.exp(-rdt*5);camera.fov=CAM.fov-CAM.fovKick;camera.updateProjectionMatrix();
 }
 
@@ -1895,16 +1897,31 @@ const hemi=scene.children.find(o=>o.isHemisphereLight);const baseLight={h:hemi.i
 function restoreLights(){hemi.intensity=baseLight.h;key.intensity=baseLight.k;rim.intensity=baseLight.r;$('fin').classList.remove('on');}
 /* チェックメイトの決めカメラ。0=攻め手の肩越し 1=王の正面ロー 2=真横すれすれ
    3=見下ろし 4=王の肩越し。倒す瞬間はどれもゆっくり回り込む */
-const MATE_NAME=['攻め手の肩越し','王の正面ロー','真横すれすれ','見下ろし','王の肩越し'];
+const MATE_NAME=['攻め手の肩越し','王の正面ロー','真横すれすれ','見下ろし','王の肩越し',
+ '足元の広角','真俯瞰','望遠の圧縮','傾いた肩越し','攻め手の真上'];
+const MATE_N=MATE_NAME.length;
 function mateShot(p,t,mode){
   const tp=t.mesh.position.clone(),sp=p.mesh.position.clone();
   const d=new THREE.Vector3(tp.x-sp.x,0,tp.z-sp.z);if(d.lengthSq()<.01)d.set(0,0,1);d.normalize();
-  const sd=new THREE.Vector3(-d.z,0,d.x),mid=tp.clone().lerp(sp,.5);
+  const sd=new THREE.Vector3(-d.z,0,d.x),mid=tp.clone().lerp(sp,.5),L=sp.distanceTo(tp);
   if(mode===1)return{pos:tp.clone().addScaledVector(d,1.5).addScaledVector(sd,.55).setY(.5),look:sp.clone().setY(.75)};
   if(mode===2)return{pos:mid.clone().addScaledVector(sd,2.5).setY(.28),look:mid.clone().setY(.6)};
   if(mode===3)return{pos:tp.clone().addScaledVector(d,-.5).addScaledVector(sd,1.4).setY(3.1),look:tp.clone().setY(.35)};
   if(mode===4)return{pos:tp.clone().addScaledVector(d,.95).addScaledVector(sd,-1.5).setY(1.05),look:sp.clone().setY(.55)};
+  /* ここから下は通常の戦闘では出ない構え */
+  if(mode===5)return{pos:tp.clone().addScaledVector(d,.8).addScaledVector(sd,.5).setY(.1),   /* 王の足元から見上げる広角 */
+    look:tp.clone().setY(1.5),fov:96,roll:-.1};
+  if(mode===6)return{pos:tp.clone().addScaledVector(d,-.05).setY(5.2),                        /* 王の真上 */
+    look:tp.clone().setY(.1),fov:52,roll:.55};
+  if(mode===7)return{pos:tp.clone().addScaledVector(sd,5.6).addScaledVector(d,1.3).setY(.8),  /* 望遠で奥行きを潰す */
+    look:tp.clone().setY(.55),fov:26};
+  if(mode===8)return{pos:tp.clone().addScaledVector(d,1.15).addScaledVector(sd,-1.25).setY(.85), /* 傾いた肩越し */
+    look:sp.clone().setY(.6),roll:.22,fov:72};
+  if(mode===9)return{pos:sp.clone().addScaledVector(d,.25).setY(2.9),                          /* 攻め手の真上から筋を見下ろす */
+    look:tp.clone().setY(.3),fov:58,roll:-.18};
   return{pos:sp.clone().addScaledVector(d,-2.1).addScaledVector(sd,.34).setY(1.0),look:tp.clone().setY(.45)};}
+/* 構えに付いてきた傾きと画角を当てる。指定が無ければ通常へ戻す */
+function camRig(q){CAM.roll=q&&q.roll||0;CAM.fov=(q&&q.fov)||CAM_FOV0;}
 /* 決めの瞬間、的を中心にゆっくり回す */
 function mateOrbit(t,sec,deg){const c=t.mesh.position.clone();const p0=CAM.pos.clone(),l0=CAM.look.clone();
   const r=Math.hypot(p0.x-c.x,p0.z-c.z),a0=Math.atan2(p0.z-c.z,p0.x-c.x),y0=p0.y;
@@ -1913,7 +1930,7 @@ function mateOrbit(t,sec,deg){const c=t.mesh.position.clone();const p0=CAM.pos.c
 /* 決めの瞬間を3つの角度から continuous に見せる。
    スローの最中でも尺が崩れないよう、時間は実時間で測る */
 function mateReplay(p,t,first){
-  const rest=[0,1,2,3,4].filter(m=>m!==first);
+  const rest=[];for(let i=0;i<MATE_N;i++)if(i!==first)rest.push(i);
   for(let i=rest.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const x=rest[i];rest[i]=rest[j];rest[j]=x;}
   const order=[first,rest[0],rest[1]],HOLD=[640,640,980];
   const c=t.mesh.position.clone();
@@ -1921,7 +1938,7 @@ function mateReplay(p,t,first){
   const step=now=>{
     if(idx<0||now-t0>=HOLD[idx]){
       idx++;if(idx>=order.length)return;
-      t0=now;rig=mateShot(p,t,order[idx]);
+      t0=now;rig=mateShot(p,t,order[idx]);camRig(rig);
       r=Math.hypot(rig.pos.x-c.x,rig.pos.z-c.z);a0=Math.atan2(rig.pos.z-c.z,rig.pos.x-c.x);
       CAM.fovKick=Math.max(CAM.fovKick,idx?5:0);}
     const k=Math.min(1,(now-t0)/HOLD[idx]);
@@ -1946,12 +1963,16 @@ const rafPlay=(ms,fn)=>new Promise(res=>{const t0=performance.now();
 const RP_RIG=[{a:78,y:.75,d:2.5,lead:.5},    /* 低い横から並走 */
               {a:132,y:1.9,d:3.0,lead:.6},   /* 斜め後ろ上から追う */
               {a:26,y:.85,d:2.6,lead:-.4},   /* 的側から迎え撃つ */
-              {a:95,y:3.0,d:2.9,lead:.45}];  /* 高い横から見下ろす */
+              {a:95,y:3.0,d:2.9,lead:.45},   /* 高い横から見下ろす */
+              {a:88,y:.1,d:1.5,lead:.35,fov:98,roll:-.12},   /* 盤すれすれの広角 */
+              {a:0,y:3.6,d:.6,lead:.9,fov:54,roll:.4},       /* 駒の真上を併走 */
+              {a:100,y:.9,d:7.5,lead:.5,fov:22},             /* 望遠で横から */
+              {a:150,y:1.3,d:2.6,lead:.7,roll:.2,fov:74}];   /* 傾けて後ろから */
 function replayShot(C,B,i,f,sd){const g=RP_RIG[i%RP_RIG.length];
   const ang=g.a*Math.PI/180;
   const to=B.clone().sub(C).setY(0),gap=to.length();
   return {pos:C.clone().addScaledVector(f,Math.cos(ang)*g.d).addScaledVector(sd,Math.sin(ang)*g.d).setY(g.y),
-          look:C.clone().addScaledVector(f,g.lead*Math.min(2.2,gap)).setY(.5)};}
+          look:C.clone().addScaledVector(f,g.lead*Math.min(2.2,gap)).setY(.5),fov:g.fov,roll:g.roll};}
 async function matePlayback(){
   const r=mateRec;if(!r||r.fr.length<6)return;r.on=0;
   const p=r.p,t=r.t,pm=p.mesh,tm=t.mesh;
@@ -1965,7 +1986,7 @@ async function matePlayback(){
   if(window.__RP)__RP.push({ev:'start',t:performance.now(),frames:r.fr.length,dur:+dur.toFixed(1),play:+PLAY.toFixed(0),
     f0x:+r.fr[0].pp.x.toFixed(2),f0z:+r.fr[0].pp.z.toFixed(2),
     fnx:+r.fr[r.fr.length-1].pp.x.toFixed(2),fnz:+r.fr[r.fr.length-1].pp.z.toFixed(2)});
-  const pool=[0,1,2,3];
+  const pool=[0,1,2,3,4,5,6,7];
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const x=pool[i];pool[i]=pool[j];pool[j]=x;}
   const sample=u=>{const T=tBeg+u*span;let i=1;while(i<r.fr.length-1&&r.fr[i].t<T)i++;
     const a=r.fr[i-1],b=r.fr[i],w=Math.min(1,Math.max(0,(T-a.t)/Math.max(1,b.t-a.t)));
@@ -1982,7 +2003,7 @@ async function matePlayback(){
     tm.visible=true;lean(tm,dirR,0);tm.position.copy(kt);tm.quaternion.copy(ktq);
     const cam=u=>{const q=replayShot(pm.position,kt,pool[n],dirR,sdR);
       q.pos.y+=.18*u;                      /* 寄るほど少しだけ持ち上がる */
-      CAM.shot=q;CAM.pos.copy(q.pos);CAM.look.copy(q.look);};
+      camRig(q);CAM.shot=q;CAM.pos.copy(q.pos);CAM.look.copy(q.look);};
     sample(0);cam(0);
     if(window.__RP)__RP.push({ev:'pass',n,rig:pool[n],t:performance.now()});
     await rafPlay(PLAY,k=>{sample(k);cam(k*.7);
@@ -2006,7 +2027,7 @@ async function matePlayback(){
   lean(tm,dirR,0);
   if(rp)rp.classList.remove('on');
   pm.position.copy(kp);pm.quaternion.copy(kq);
-  /* 最後ののけぞりは戻さない。戻すと王が起き上がってもう一度倒れる */
+  camRig(null);                    /* 傾きと画角を通常へ戻す */
   tm.visible=kv;mateRec=null;return true;}
 function finisher(k,dir){
   const crown=new THREE.Group();const mat=k.mesh.userData.mat;
@@ -2942,7 +2963,7 @@ const OKS={
 let OK_PIERCE=1.2,OK_DIVE_Y=1.55;
 let FK_PATH=1;      /* 0=毎回自分のマスへ戻る  1=三角形の経路 */
 let OK_CAM=9,OK_FAR=3.4;   /* 9=即肩越しと追従をランダムに選ぶ */
-let MATE_CAM=7;            /* 7=直前を別視点で再生 8=決めの瞬間を3カット 9=1種をランダム */
+let MATE_CAM=22;           /* 0〜9=固定の構え 20=1種をランダム 21=決めの瞬間を3カット 22=直前を別視点で再生 */
 let OK_SH_ANG=25,OK_SH_Y=.45,OK_SH_R=1.0;  /* 肩越しの振り角・高さ・引き */  /* 長距離オーバーキルのカメラ。0=追従 1=肩越し即 2=途中で肩越し 3=横からのパン */
 function overkillBoom(tp,y){OKS.impact();hitSlow(.8,.55);CAM.shake=1.7;CAM.fovKick=14;const fl=$('sdFlash');if(fl){fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');}
   fireball(tp.clone().setY(y),1.5);for(let i=0;i<3;i++)setTimeout(()=>shock(tp.clone().setY(i?.04:y),2.4+i*1.5,i?0xff4a3a:0xffb040),i*80);showTech('Overkill','');}
@@ -3037,8 +3058,8 @@ async function mainAttack(p,m,ev,foe,name,u){
     await tween(.4,k=>gt.forEach(g=>g.material.opacity=.55*k));await glide(p,m.f,m.r);
     tween(.4,k=>gt.forEach(g=>g.material.opacity=.55*(1-k))).then(()=>gt.forEach(g=>scene.remove(g)));}
   let mateMode=-1;
-  if(name){mateMode=MATE_CAM===9?Math.floor(Math.random()*5):MATE_CAM;
-    CAM.shot=mateShot(p,tgt,mateMode);
+  if(name){mateMode=MATE_CAM>=20?Math.floor(Math.random()*MATE_N):MATE_CAM;
+    const rig0=mateShot(p,tgt,mateMode);camRig(rig0);CAM.shot=rig0;
     showTech(name,TR('王への最後の一撃'));await wait(.9);}
   else{const t=(m.tags||[]).find(x=>['Battery','Outpost','Desperado','Skewer'].includes(x));if(t)showTech(t);
     for(const md of (m.mods||[]))if(['Phalanx','Rampart'].includes(md[0]))showTech(md[0],'',tgt.side,tgt); // the defender's own skill
@@ -3057,7 +3078,7 @@ async function mainAttack(p,m,ev,foe,name,u){
   const rl=roulette(new THREE.Vector3(tp.x,barY(tgt.t)+.62,tp.z),m.dmin,m.dmax);SFX.spin();
   if(m.cannon){await cannonShot(p,tgt,dir,sp,tp,foe);ev.contact=tp.clone().addScaledVector(dir,-.4);}
   else{
-    if(name&&MATE_CAM===7)mateRecStart(p,tgt);   /* ここから収録 */
+    if(name&&MATE_CAM===22)mateRecStart(p,tgt);  /* ここから収録 */
     await tween(.24,k=>lean(p.mesh,dir,-.28*eOut(k)));
     if(!foe){if(dist>2.2)frameTwo(sp,tp);else sideShot(sp,tp);}
     const contact=hop?tp.clone():tp.clone().addScaledVector(dir,-.52);let d0=0;const onKT=hop?trampleTracker(p,u,sp,tp):null;moveSound(p,dist,'start',Math.min(.9,.18+dist*.09));
@@ -3068,8 +3089,8 @@ async function mainAttack(p,m,ev,foe,name,u){
   const hitPos=new THREE.Vector3(lerp(contact.x,tp.x,.5),hop?.3:.7,lerp(contact.z,tp.z,.5));
   SFX.hit(dist);if(crit)SFX.crit();stopRoulette(rl,dmg,q);
   const mate=kill&&tgt.t==='K';
-  if(mate){if(MATE_CAM===8)mateReplay(p,tgt,Math.floor(Math.random()*5));
-    else if(MATE_CAM!==7)mateOrbit(tgt,2.2,mateMode===3?40:26);}
+  if(mate){if(MATE_CAM===21)mateReplay(p,tgt,Math.floor(Math.random()*MATE_N));
+    else if(MATE_CAM!==22)mateOrbit(tgt,2.2,mateMode===3?40:26);}
   hitSlow(mate?1.1:crit?.6:kill?.42:.3,mate?.9:crit?.55:kill?.45:.3);CAM.shake=crit||kill?1.1:graze?.4:.7;CAM.fovKick=crit?11:kill?9:graze?3:6;
   tgt.mesh.userData.mat.emissive.setRGB(.55,.42,.3);shock(hitPos,kill?3:2.2,kill?0xf3c86a:0xefe9dc);burst(hitPos,kill?26:18,sparkMat,4.5,.45,5,1);
   if(crit)shock(hitPos,3.6,0xf3c86a);
@@ -3088,12 +3109,12 @@ async function mainAttack(p,m,ev,foe,name,u){
     /* まず本番の一撃を最後まで見せる。ここで切るとリプレイが2撃目に見える */
     await tween(.38,k=>{lean(tgt.mesh,dir,.38+1.05*eIn(k));tgt.mesh.position.copy(tp).addScaledVector(dir,.14+.25*eIn(k));});
     if(window.__RP)__RP.push({ev:'realLeanDone',t:performance.now()});
-    if(MATE_CAM===7){await rafPlay(620,()=>{});await matePlayback();}
+    if(MATE_CAM===22){await rafPlay(620,()=>{});await matePlayback();}
     if(window.__RP)__RP.push({ev:'rpDone',t:performance.now()});
     tgt.mesh.visible=false;scene.remove(hb.spr);shards(tgt,dir);SFX.shatter();CAM.shake=.6;burst(new THREE.Vector3(tp.x,.08,tp.z),22,dustMat,1.8,.9,1.5,2.4);}
   else if(ev.overkill){scene.remove(hb.spr);overkillBoom(tp,.55);obliterate(tgt,5);craterAt(tp);await wait(.9);}
   else{scene.remove(hb.spr);await crumbleFly(tgt,dir,ev.hp0>=tgt.max);}
-  if(mate){$('fin').textContent=name||'Checkmate';hideTech();finisher(tgt,dir);SFX.final();}
+  if(mate){camRig(null);$('fin').textContent=name||'Checkmate';hideTech();finisher(tgt,dir);SFX.final();}
   await wait(.35);
   if(!m.cannon){const endP=new THREE.Vector3(X(m.f),0,Z(m.r)),from=p.mesh.position.clone();
     await tween(.34,k=>{p.mesh.position.lerpVectors(from,endP,eIO(k));lean(p.mesh,dir,.32*(1-k));});lean(p.mesh,dir,0);}
