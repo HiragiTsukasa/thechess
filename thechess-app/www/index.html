@@ -1554,7 +1554,7 @@ addEventListener('DOMContentLoaded',()=>TRdom());
 #skCall b.off{background:rgba(9,11,14,.62);padding:5px 10px}
 #skCall b.off small{display:none}
 #skCall b.act::after{content:"";position:absolute;inset:-8px;border-radius:20px}
-#skCall b.sel{background:rgba(26,30,36,.96);box-shadow:0 0 0 1px currentColor,0 0 18px -5px currentColor}
+#skCall b.sel{background:rgba(30,35,42,.96)}
 </style>
 
 <script>
@@ -4415,7 +4415,7 @@ function skOpen(p){skHide();skP=p;const names=skListOf(p);const on=new Set(modes
   const g=$('skLn'),gb=$('skLnB');
   skItems=names.map((n,i)=>{const ok=on.has(n);
     const b=document.createElement('b');b.className=ok?'act':'off';
-    b.style.borderColor=ok?SKHUE[n]+'99':'rgba(255,255,255,.14)';
+    b.style.borderColor=ok?SKHUE[n]+'55':'rgba(255,255,255,.14)';
     b.style.color=ok?SKHUE[n]:'#a6abb1';
     b.innerHTML='<u></u><small></small>';
     b.firstChild.textContent=n;b.lastChild.textContent=SKNOTE[n]||'';
@@ -4437,10 +4437,12 @@ function skOpen(p){skHide();skP=p;const names=skListOf(p);const on=new Set(modes
   skT0=performance.now();skFrame();}
 function skMark(){for(const it of skItems){const on=uiSkill===it.n;
   it.b.classList.toggle('sel',on);
+  /* 選ばれている札は縁の色が濃くなるだけ。大きさは変えない */
+  if(it.ok)it.b.style.borderColor=SKHUE[it.n]+(on?'':'55');
   it.ln.setAttribute('stroke-width',on?'3.2':'2.6');
   it.lb.setAttribute('stroke-width',on?'6':'5.2');
-  if(on){ /* 選ばれた札は一度ふくらんでから落ち着く */
-    it.st=1.2;skTm.push(setTimeout(()=>{it.st=1.07;},160));}
+  if(on){ /* 切り替わった瞬間だけ弾ませる。大きさは元に戻す */
+    it.st=1.14;skTm.push(setTimeout(()=>{it.st=1;},150));}
   else it.st=1;}}
 /* 札は1枚ずつ指で押しのけられる。他の札は付いてこない */
 function skDragBind(b,it){
