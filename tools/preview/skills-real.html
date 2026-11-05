@@ -9,12 +9,17 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
 #stage{position:fixed;left:0;right:0;top:0;bottom:var(--bar,52px);
  border:0;width:100%;height:calc(100% - var(--bar,52px));background:var(--bg);display:block}
 #bar{position:fixed;left:0;right:0;bottom:0;height:var(--bar,52px);
- display:flex;align-items:center;gap:8px;
+ display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:none;
  padding:0 max(12px,env(safe-area-inset-left,0px)) env(safe-area-inset-bottom,0px) max(12px,env(safe-area-inset-right,0px));
  box-sizing:content-box;background:#0d0f12;border-top:1px solid var(--line)}
 #bar button{flex:0 0 auto;border:1px solid var(--line);background:#15181c;color:var(--ink);
  border-radius:999px;padding:7px 13px;font:inherit;font-size:12px;cursor:pointer}
 #bar button:active{background:#1e2228}
+#bar button.on{background:#2a3038;border-color:#4a525c;color:#fff}
+#bar .grp{flex:0 0 auto;display:flex;align-items:center;gap:6px;
+ padding-left:10px;margin-left:2px;border-left:1px solid var(--line)}
+#bar .grp span{font-size:10px;color:var(--sub);white-space:nowrap}
+#bar .grp button{padding:6px 10px;font-size:11px}
 #msg{flex:1 1 auto;min-width:0;color:var(--sub);font-size:11px;
  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
@@ -24,6 +29,12 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
   <button type="button" id="bB">王と僧侶</button>
   <button type="button" id="bC">ポーン</button>
   <button type="button" id="bD">フォーク</button>
+  <button type="button" id="bE">遠距離オーバーキル</button>
+  <span class="grp"><span>フォーク経路</span>
+    <button type="button" data-fk="0">戻る</button><button type="button" data-fk="1">三角</button></span>
+  <span class="grp"><span>遠距離カメラ</span>
+    <button type="button" data-ok="0">追従</button><button type="button" data-ok="1">肩越し即</button>
+    <button type="button" data-ok="2">途中</button><button type="button" data-ok="3">真横</button></span>
   <span id="msg">読み込み中…</span>
 </div>
 <script>
@@ -42,6 +53,9 @@ const POS_C=[W('K','e1'),W('R','h1'),W('P','e5'),W('P','b7'),W('N','c3'),W('Q','
 /* d5 のクイーンが5体を狙える。どの2体にするか選ぶ盤面 */
 const POS_D=[W('K','g1'),W('Q','d5'),W('P','a2'),W('P','g2'),W('P','h2'),
   B('K','g8'),B('R','d8'),B('N','b5'),B('B','g5'),B('P','d7'),B('P','a8'),B('P','h7')];
+/* h1 のクイーンが a8 の瀕死ビショップを7マス先から撃つ。追従カメラが置いていかれる距離 */
+const POS_E=[W('K','e1'),W('Q','h1'),W('P','b2'),W('P','h2'),W('P','e2'),
+  B('K','g8'),['b','B','a8',{hp:40}],B('P','g7'),B('P','h7'),B('N','f6')];
 const msg=document.getElementById('msg');
 let G=null;
 function waitG(cb){const f=document.getElementById('stage');let n=0;
@@ -59,5 +73,19 @@ document.getElementById('bD').addEventListener('click',()=>load(POS_D,
   'd5クイーンをタップ→Forkを選ぶ→狙える5体から2体をタップで決める。もう一度タップで実行。'));
 document.getElementById('bC').addEventListener('click',()=>load(POS_C,
   'e5ポーン＝En Passant。b7ポーン＝Promotion。e1キング＝Castling＋Homecoming。',true));
-waitG(()=>{load(POS_A,'駒を1タップで移動、もう一度タップで技が出る。');});
+document.getElementById('bE').addEventListener('click',()=>load(POS_E,
+  'h1クイーンをタップ→a8をタップ→もう一度タップで発動。右のカメラ切替で見え方を比べられる。'));
+/* 切替スイッチ。盤面を置き直さずにその場で効く */
+function seg(attr,fn){const bs=[...document.querySelectorAll('#bar button['+attr+']')];
+  const paint=v=>bs.forEach(b=>b.classList.toggle('on',+b.getAttribute(attr)===v));
+  bs.forEach(b=>b.addEventListener('click',()=>{const v=+b.getAttribute(attr);
+    if(!G){msg.textContent='読み込み中…';return;}fn(v);paint(v);}));
+  return paint;}
+const paintFk=seg('data-fk',v=>{G.fkSet(v);
+  msg.textContent=v?'フォークは1撃目の位置から2撃目へ向かう（三角形）。':'フォークは毎回自分のマスへ戻る。';});
+const paintOk=seg('data-ok',v=>{G.okCamSet(v,3.4);
+  msg.textContent=['遠距離も追従カメラのまま。','点火した瞬間に相手の肩越しへ切り替える。',
+    '少し追ってから、飛行の途中で相手の肩越しへ。','真横から引いて、飛んでいく全体を見せる。'][v];});
+waitG(()=>{load(POS_A,'駒を1タップで移動、もう一度タップで技が出る。');
+  try{paintFk(G.fk());paintOk(G.okCam()[0]);}catch(e){}});
 </script>
