@@ -1954,16 +1954,24 @@ async function matePlayback(){
     pm.position.lerpVectors(a.pp,b.pp,w);pm.quaternion.copy(a.pq).slerp(b.pq,w);
     tm.position.lerpVectors(a.tp,b.tp,w);tm.quaternion.copy(a.tq).slerp(b.tq,w);};
   const rp=$('mateRp');if(rp)rp.classList.add('on');
+  /* 当たった後の王ののけぞりまで含めて1本に。本番と同じ動き */
+  const dirR=new THREE.Vector3().subVectors(kt,r.fr[0].pp).setY(0);
+  if(dirR.lengthSq()<.01)dirR.set(0,0,1);dirR.normalize();
   for(let n=0;n<2;n++){
-    tm.visible=true;
+    tm.visible=true;lean(tm,dirR,0);tm.position.copy(kt);tm.quaternion.copy(ktq);
     const rig=mateShot(p,t,pool[n]),c=kt.clone();
     const rad=Math.hypot(rig.pos.x-c.x,rig.pos.z-c.z),a0=Math.atan2(rig.pos.z-c.z,rig.pos.x-c.x);
     CAM.shot=rig;CAM.pos.copy(rig.pos);CAM.look.copy(rig.look);
-    await rafPlay(Math.max(950,dur*1.6),k=>{sample(k);
-      const a=a0+18*Math.PI/180*k;
-      const q={pos:new THREE.Vector3(c.x+Math.cos(a)*rad,rig.pos.y+.2*k,c.z+Math.sin(a)*rad),look:rig.look};
-      CAM.shot=q;CAM.pos.copy(q.pos);CAM.look.copy(q.look);});
-    await rafPlay(200,()=>{});}
+    const SWING=18*Math.PI/180;
+    const cam=(u,span)=>{const a=a0+SWING*u;
+      const q={pos:new THREE.Vector3(c.x+Math.cos(a)*rad,rig.pos.y+.2*u,c.z+Math.sin(a)*rad),look:rig.look};
+      CAM.shot=q;CAM.pos.copy(q.pos);CAM.look.copy(q.look);};
+    await rafPlay(Math.max(760,dur*1.25),k=>{sample(k);cam(k*.7);});
+    await rafPlay(360,k=>{const e=eIn(k);
+      lean(tm,dirR,.38+1.05*e);tm.position.copy(kt).addScaledVector(dirR,.14+.25*e);
+      cam(.7+k*.3);});
+    await rafPlay(170,()=>{});}
+  lean(tm,dirR,0);
   if(rp)rp.classList.remove('on');
   pm.position.copy(kp);pm.quaternion.copy(kq);
   tm.position.copy(kt);tm.quaternion.copy(ktq);tm.visible=kv;
@@ -3007,9 +3015,12 @@ async function mainAttack(p,m,ev,foe,name,u){
   const sp=p.mesh.position.clone();const dir=new THREE.Vector3(tp.x-sp.x,0,tp.z-sp.z);const dist=dir.length();dir.normalize();
   if(foe)defenderShot(tgt,p);
   if(m.battery){const rear=m.battery;const a=rear.mesh.position.clone();a.y=.7;const b=sp.clone();b.y=.7;glowPiece(rear,.9,.6,.25,1);await orb(a,b,0xf0a050,.4);glowPiece(p,.9,.6,.25,.6);}
-  if(kill&&!name&&!m.cannon&&!m.ep){ // special kills
-    if(ev.overkill){if('NPK'.includes(p.t)||u&&u.t==='P')await meteor(p,tgt,ev,u);else await missile(p,tgt,ev);return;}
-    if(p.t==='N'){await knightStomp(p,tgt,ev,u);return;}}
+  if(kill&&!m.cannon&&!m.ep){ // special kills
+    if(ev.overkill){                 /* 王への一撃でも、オーバーキルならその演出で見せる */
+      if('NPK'.includes(p.t)||u&&u.t==='P')await meteor(p,tgt,ev,u);else await missile(p,tgt,ev);
+      if(tgt.t==='K'){$('fin').textContent=name||'Checkmate';hideTech();finisher(tgt,dir);SFX.final();await wait(2.6);}
+      return;}
+    if(p.t==='N'&&!name){await knightStomp(p,tgt,ev,u);return;}}
   const hb=hpBar(tgt);hb.shown=ev.hp0;hb.lag=ev.hp0;drawBar(hb);hb.spr.position.set(tp.x,barY(tgt.t),tp.z);
   const rl=roulette(new THREE.Vector3(tp.x,barY(tgt.t)+.62,tp.z),m.dmin,m.dmax);SFX.spin();
   if(m.cannon){await cannonShot(p,tgt,dir,sp,tp,foe);ev.contact=tp.clone().addScaledVector(dir,-.4);}
