@@ -1941,13 +1941,24 @@ function mateRecTick(){const r=mateRec;if(!r||!r.on)return;
 const rafPlay=(ms,fn)=>new Promise(res=>{const t0=performance.now();
   const step=now=>{const k=Math.min(1,(now-t0)/ms);fn(k);
     if(k<1)requestAnimationFrame(step);else res();};requestAnimationFrame(step);});
+/* リプレイ用の構え。長い突進は固定カメラだと豆粒になるので、角度違いで追いかける。
+   a=進行方向からの振り角 y=高さ d=駒からの距離 lead=視線をどれだけ的側へ送るか */
+const RP_RIG=[{a:78,y:.75,d:2.5,lead:.5},    /* 低い横から並走 */
+              {a:132,y:1.9,d:3.0,lead:.6},   /* 斜め後ろ上から追う */
+              {a:26,y:.85,d:2.6,lead:-.4},   /* 的側から迎え撃つ */
+              {a:95,y:3.0,d:2.9,lead:.45}];  /* 高い横から見下ろす */
+function replayShot(C,B,i,f,sd){const g=RP_RIG[i%RP_RIG.length];
+  const ang=g.a*Math.PI/180;
+  const to=B.clone().sub(C).setY(0),gap=to.length();
+  return {pos:C.clone().addScaledVector(f,Math.cos(ang)*g.d).addScaledVector(sd,Math.sin(ang)*g.d).setY(g.y),
+          look:C.clone().addScaledVector(f,g.lead*Math.min(2.2,gap)).setY(.5)};}
 async function matePlayback(){
   const r=mateRec;if(!r||r.fr.length<6)return;r.on=0;
   const p=r.p,t=r.t,pm=p.mesh,tm=t.mesh;
   const kp=pm.position.clone(),kq=pm.quaternion.clone();
   const kt=tm.position.clone(),ktq=tm.quaternion.clone(),kv=tm.visible;
   const dur=Math.max(380,r.fr[r.fr.length-1].t);
-  const pool=[0,1,2,3,4];
+  const pool=[0,1,2,3];
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const x=pool[i];pool[i]=pool[j];pool[j]=x;}
   const sample=u=>{const T=u*dur;let i=1;while(i<r.fr.length-1&&r.fr[i].t<T)i++;
     const a=r.fr[i-1],b=r.fr[i],w=Math.min(1,Math.max(0,(T-a.t)/Math.max(1,b.t-a.t)));
@@ -1957,20 +1968,18 @@ async function matePlayback(){
   /* 当たった後の王ののけぞりまで含めて1本に。本番と同じ動き */
   const dirR=new THREE.Vector3().subVectors(kt,r.fr[0].pp).setY(0);
   if(dirR.lengthSq()<.01)dirR.set(0,0,1);dirR.normalize();
+  const sdR=new THREE.Vector3(-dirR.z,0,dirR.x);
   for(let n=0;n<2;n++){
     tm.visible=true;lean(tm,dirR,0);tm.position.copy(kt);tm.quaternion.copy(ktq);
-    const rig=mateShot(p,t,pool[n]),c=kt.clone();
-    const rad=Math.hypot(rig.pos.x-c.x,rig.pos.z-c.z),a0=Math.atan2(rig.pos.z-c.z,rig.pos.x-c.x);
-    CAM.shot=rig;CAM.pos.copy(rig.pos);CAM.look.copy(rig.look);
-    const SWING=18*Math.PI/180;
-    const cam=(u,span)=>{const a=a0+SWING*u;
-      const q={pos:new THREE.Vector3(c.x+Math.cos(a)*rad,rig.pos.y+.2*u,c.z+Math.sin(a)*rad),look:rig.look};
+    const cam=u=>{const q=replayShot(pm.position,kt,pool[n],dirR,sdR);
+      q.pos.y+=.18*u;                      /* 寄るほど少しだけ持ち上がる */
       CAM.shot=q;CAM.pos.copy(q.pos);CAM.look.copy(q.look);};
-    await rafPlay(Math.max(760,dur*1.25),k=>{sample(k);cam(k*.7);});
-    await rafPlay(360,k=>{const e=eIn(k);
+    sample(0);cam(0);
+    await rafPlay(Math.max(860,dur*1.5),k=>{sample(k);cam(k*.7);});
+    await rafPlay(380,k=>{const e=eIn(k);
       lean(tm,dirR,.38+1.05*e);tm.position.copy(kt).addScaledVector(dirR,.14+.25*e);
       cam(.7+k*.3);});
-    await rafPlay(170,()=>{});}
+    await rafPlay(180,()=>{});}
   lean(tm,dirR,0);
   if(rp)rp.classList.remove('on');
   pm.position.copy(kp);pm.quaternion.copy(kq);
@@ -3031,7 +3040,7 @@ async function mainAttack(p,m,ev,foe,name,u){
     const contact=hop?tp.clone():tp.clone().addScaledVector(dir,-.52);let d0=0;const onKT=hop?trampleTracker(p,u,sp,tp):null;moveSound(p,dist,'start',Math.min(.9,.18+dist*.09));
     await tween(hop?.5:.1+dist*.045,(k,dt)=>{const e=hop?eIO(k):eIn(k);p.mesh.position.lerpVectors(sp,contact,e);
       if(hop){p.mesh.position.y=Math.sin(Math.min(1,k*1.1)*Math.PI)*1.3*(k<.9?1:1-(k-.9)/.1);if(onKT)onKT(k);}else{lean(p.mesh,dir,lerp0(-.28,.32,k*3));d0+=dt;if(d0>.02){d0=0;burst(new THREE.Vector3(p.mesh.position.x,.04,p.mesh.position.z),2,dustMat,.6,.5,1,1.8);}}});
-    ev.contact=contact;}
+    ev.contact=contact;if(mateRec)mateRec.on=0;}
   const contact=ev.contact||tp.clone();
   const hitPos=new THREE.Vector3(lerp(contact.x,tp.x,.5),hop?.3:.7,lerp(contact.z,tp.z,.5));
   SFX.hit(dist);if(crit)SFX.crit();stopRoulette(rl,dmg,q);
