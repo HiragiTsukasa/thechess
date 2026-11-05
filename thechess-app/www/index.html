@@ -4453,7 +4453,8 @@ function skDragBind(b,it){
   b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);}
 /* 札をタップした時：まだ選ばれていなければ選ぶ。選ばれていて的が決まっていればそのまま撃つ */
 function skTapLabel(n,ok){if(!ok||busy||!humanTurn())return;
-  if(uiSkill!==n){skPick(n,true);return;}
+  if(uiSkill!==n)skPick(n,true);
+  /* 決めることが残っていなければ、その1タップで撃つ */
   if(uiPending){uiConfirm();return;}
   if(n!=='Fork'&&uiCands&&uiCands.length===1){uiChoose(uiCands[0]);uiConfirm();}}
 function skPick(n,cycled){const p=skP||sel;if(!p||busy||!humanTurn())return;
