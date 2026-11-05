@@ -23,6 +23,7 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
   <button type="button" id="bA">ルーク盤面</button>
   <button type="button" id="bB">王と僧侶</button>
   <button type="button" id="bC">ポーン</button>
+  <button type="button" id="bD">フォーク</button>
   <span id="msg">読み込み中…</span>
 </div>
 <script>
@@ -38,6 +39,9 @@ const POS_B=[W('K','e1'),W('B','d4'),W('R','h3'),['w','N','f3',{hp:220}],
 /* e5ポーン＝アンパッサン成立、b7ポーン＝成り成立。ナイトとクイーンは任意の技を持たない */
 const POS_C=[W('K','e1'),W('R','h1'),W('P','e5'),W('P','b7'),W('N','c3'),W('Q','d1'),
   B('K','g8'),B('P','d5'),B('R','a8'),B('N','f6'),B('P','g7'),B('P','h7')];
+/* d5 のクイーンが5体を狙える。どの2体にするか選ぶ盤面 */
+const POS_D=[W('K','g1'),W('Q','d5'),W('P','a2'),W('P','g2'),W('P','h2'),
+  B('K','g8'),B('R','d8'),B('N','b5'),B('B','g5'),B('P','d7'),B('P','a8'),B('P','h7')];
 const msg=document.getElementById('msg');
 let G=null;
 function waitG(cb){const f=document.getElementById('stage');let n=0;
@@ -51,6 +55,8 @@ document.getElementById('bA').addEventListener('click',()=>load(POS_A,
   'e5ルーク＝Laser＋Fork。c3ナイトとd1クイーンは任意の技がないので札は出ない。'));
 document.getElementById('bB').addEventListener('click',()=>load(POS_B,
   'd4ビショップ＝Sanctuary。e1キング＝Homecoming。h3ルークはLaserがグレー。'));
+document.getElementById('bD').addEventListener('click',()=>load(POS_D,
+  'd5クイーンをタップ→Forkを選ぶ→狙える5体から2体をタップで決める。もう一度タップで実行。'));
 document.getElementById('bC').addEventListener('click',()=>load(POS_C,
   'e5ポーン＝En Passant。b7ポーン＝Promotion。e1キング＝Castling＋Homecoming。',true));
 waitG(()=>{load(POS_A,'駒を1タップで移動、もう一度タップで技が出る。');});

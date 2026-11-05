@@ -11,7 +11,7 @@
  "12文字まで": "Up to 12 characters",
  "150手で判定": "Decided at 150 plies",
  "1体で2体を同時に狙え": "Threaten two pieces with one",
- "1体で2体以上を狙える形。その駒を選んで再タップするとForkモードになり、狙える2体（価値の高い順）へ続けて攻撃して元のマスに戻る": "A shape where one piece threatens two or more. Select it and tap again for Fork mode: it strikes the two most valuable targets in turn, then returns to its square",
+ "1体で2体以上を狙える形。その駒を選んで再タップしてForkを選ぶと狙える敵が全部光り、そこから2体をタップで決める。選んだ順に攻撃して元のマスに戻る": "A shape where one piece threatens two or more. Select it, tap again, choose Fork, and every reachable enemy lights up; tap two of them. The piece strikes in that order and returns to its square.",
  "1体で2体以上を狙える形。狙える<b>2体</b>が光る": "One piece threatening two or more. The <b>two</b> targets light up",
  "1体につき -10%": "-10% per piece",
  "1体を<b>120回復</b>": "Heals one for <b>120</b>",
