@@ -3098,9 +3098,12 @@ async function mainAttack(p,m,ev,foe,name,u){
     await fl;await wait(.3);scene.remove(hb.spr);return;}
   SFX.crack();
   if(mate){
-    /* まず本番の一撃を最後まで見せる。ここで切るとリプレイが2撃目に見える */
-    await tween(.38,k=>{lean(tgt.mesh,dir,.38+1.05*eIn(k));tgt.mesh.position.copy(tp).addScaledVector(dir,.14+.25*eIn(k));});
-    if(mateNow===22){await rafPlay(620,()=>{});await matePlayback();}
+    if(mateNow===22){
+      /* 倒れ切る手前、8割あたりで切る。間は置かず、まだ倒れている最中にリプレイへ入る */
+      await tween(.3,k=>{const e=eIn(k)*.8;
+        lean(tgt.mesh,dir,.38+1.05*e);tgt.mesh.position.copy(tp).addScaledVector(dir,.14+.25*e);});
+      await matePlayback();}
+    else await tween(.38,k=>{lean(tgt.mesh,dir,.38+1.05*eIn(k));tgt.mesh.position.copy(tp).addScaledVector(dir,.14+.25*eIn(k));});
     tgt.mesh.visible=false;scene.remove(hb.spr);shards(tgt,dir);SFX.shatter();CAM.shake=.6;burst(new THREE.Vector3(tp.x,.08,tp.z),22,dustMat,1.8,.9,1.5,2.4);}
   else if(ev.overkill){scene.remove(hb.spr);overkillBoom(tp,.55);obliterate(tgt,5);craterAt(tp);await wait(.9);}
   else{scene.remove(hb.spr);await crumbleFly(tgt,dir,ev.hp0>=tgt.max);}
