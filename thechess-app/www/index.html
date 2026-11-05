@@ -3625,6 +3625,8 @@ let lvLockRefresh=()=>{};   /* 3択の鍵表示を更新する。中身は下の
 $('again').addEventListener('click',()=>{
  bgmHush=0;
  if(ranked){                                   /* ランクは回数を使わず、マッチングからやり直す */
+  const cd=dlyCool();
+  if(cd>0){toast(TRF("遅延が続いています。あと{0}秒お待ちください",cd));return;}  /* 結果画面は畳まない */
   $('result').classList.remove('on');ranked=false;over=true;busy=true;rkStart();return;}
  if(mode==='online'){leaveOnline();$('result').classList.remove('on');openLobby();return;}
  start(mode);});
@@ -6127,10 +6129,10 @@ $('hsBack').addEventListener('click',()=>{audio();pClose();openMenu();});
 $('ldBack').addEventListener('click',()=>{audio();fillRank();});
 $('rkGo').addEventListener('click',()=>{audio();
  if(!rankOpen()){toast(TRF("ランクマッチは {0}:00〜{1}:00 です",RK_OPEN,RK_CLOSE));return;}
+ const cd=dlyCool();                /* 常習者の待機。盤を畳む前に見る */
+ if(cd>0){toast(TRF("遅延が続いています。あと{0}秒お待ちください",cd));return;}
  rkStart();});   /* ランクは回数でなくレートの参加費で入る */
 async function rkStart(){
- const cd=dlyCool();               /* 常習者は次の対戦まで待たせる */
- if(cd>0){toast(TRF("遅延が続いています。あと{0}秒お待ちください",cd));return;}
  dlyN=0;dlyMark=0;dlyPaint();
  bgmHush=0;                        /* マッチング中とVS演出中に曲を戻す */
  const t=tierOf(RKS.rate);
