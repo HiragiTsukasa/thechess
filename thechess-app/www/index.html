@@ -1538,6 +1538,13 @@ addEventListener('DOMContentLoaded',()=>TRdom());
 
 <style>
 /* 技の吹き出し：駒を選ぶと、その駒の技が線でつながって並ぶ */
+#mateRp{position:fixed;left:0;right:0;top:calc(18px + env(safe-area-inset-top,0px));z-index:24;
+ pointer-events:none;display:none;text-align:center}
+#mateRp.on{display:block}
+#mateRp b{display:inline-block;font:600 11px/1 "IBM Plex Mono",ui-monospace,monospace;
+ letter-spacing:.32em;color:#efe9dc;background:rgba(9,11,14,.72);
+ padding:7px 14px 7px 18px;border-radius:999px;animation:rpBlink 1s steps(2) infinite}
+@keyframes rpBlink{0%,60%{opacity:1}61%,100%{opacity:.35}}
 #skCall{position:fixed;inset:0;z-index:9;pointer-events:none}
 #skCall>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 #skCall b{position:absolute;left:0;top:0;white-space:nowrap;display:block;
@@ -1923,6 +1930,44 @@ function mateReplay(p,t,first){
     CAM.shot=q;CAM.pos.copy(q.pos);CAM.look.copy(q.look);
     requestAnimationFrame(step);};
   requestAnimationFrame(step);}
+/* ── キルの直前を録っておいて、別の視点から見直す ── */
+let mateRec=null;
+function mateRecStart(p,t){mateRec={p,t,fr:[],on:1,t0:performance.now()};}
+function mateRecTick(){const r=mateRec;if(!r||!r.on)return;
+  if(r.fr.length>600){r.on=0;return;}
+  r.fr.push({t:performance.now()-r.t0,
+    pp:r.p.mesh.position.clone(),pq:r.p.mesh.quaternion.clone(),
+    tp:r.t.mesh.position.clone(),tq:r.t.mesh.quaternion.clone()});}
+const rafPlay=(ms,fn)=>new Promise(res=>{const t0=performance.now();
+  const step=now=>{const k=Math.min(1,(now-t0)/ms);fn(k);
+    if(k<1)requestAnimationFrame(step);else res();};requestAnimationFrame(step);});
+async function matePlayback(){
+  const r=mateRec;if(!r||r.fr.length<6)return;r.on=0;
+  const p=r.p,t=r.t,pm=p.mesh,tm=t.mesh;
+  const kp=pm.position.clone(),kq=pm.quaternion.clone();
+  const kt=tm.position.clone(),ktq=tm.quaternion.clone(),kv=tm.visible;
+  const dur=Math.max(380,r.fr[r.fr.length-1].t);
+  const pool=[0,1,2,3,4];
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const x=pool[i];pool[i]=pool[j];pool[j]=x;}
+  const sample=u=>{const T=u*dur;let i=1;while(i<r.fr.length-1&&r.fr[i].t<T)i++;
+    const a=r.fr[i-1],b=r.fr[i],w=Math.min(1,Math.max(0,(T-a.t)/Math.max(1,b.t-a.t)));
+    pm.position.lerpVectors(a.pp,b.pp,w);pm.quaternion.copy(a.pq).slerp(b.pq,w);
+    tm.position.lerpVectors(a.tp,b.tp,w);tm.quaternion.copy(a.tq).slerp(b.tq,w);};
+  const rp=$('mateRp');if(rp)rp.classList.add('on');
+  for(let n=0;n<2;n++){
+    tm.visible=true;
+    const rig=mateShot(p,t,pool[n]),c=kt.clone();
+    const rad=Math.hypot(rig.pos.x-c.x,rig.pos.z-c.z),a0=Math.atan2(rig.pos.z-c.z,rig.pos.x-c.x);
+    CAM.shot=rig;CAM.pos.copy(rig.pos);CAM.look.copy(rig.look);
+    await rafPlay(Math.max(950,dur*1.6),k=>{sample(k);
+      const a=a0+18*Math.PI/180*k;
+      const q={pos:new THREE.Vector3(c.x+Math.cos(a)*rad,rig.pos.y+.2*k,c.z+Math.sin(a)*rad),look:rig.look};
+      CAM.shot=q;CAM.pos.copy(q.pos);CAM.look.copy(q.look);});
+    await rafPlay(200,()=>{});}
+  if(rp)rp.classList.remove('on');
+  pm.position.copy(kp);pm.quaternion.copy(kq);
+  tm.position.copy(kt);tm.quaternion.copy(ktq);tm.visible=kv;
+  mateRec=null;}
 function finisher(k,dir){
   const crown=new THREE.Group();const mat=k.mesh.userData.mat;
   const a=new THREE.Mesh(new THREE.BoxGeometry(.06,.23,.06),mat),b=new THREE.Mesh(new THREE.BoxGeometry(.16,.06,.06),mat);b.position.y=.03;crown.add(a,b);
@@ -2857,7 +2902,7 @@ const OKS={
 let OK_PIERCE=1.2,OK_DIVE_Y=1.55;
 let FK_PATH=1;      /* 0=毎回自分のマスへ戻る  1=三角形の経路 */
 let OK_CAM=9,OK_FAR=3.4;   /* 9=即肩越しと追従をランダムに選ぶ */
-let MATE_CAM=8;            /* チェックメイトのキルカメラ。8=多視点リプレイ 9=1種をランダム */
+let MATE_CAM=7;            /* 7=直前を別視点で再生 8=決めの瞬間を3カット 9=1種をランダム */
 let OK_SH_ANG=25,OK_SH_Y=.45,OK_SH_R=1.0;  /* 肩越しの振り角・高さ・引き */  /* 長距離オーバーキルのカメラ。0=追従 1=肩越し即 2=途中で肩越し 3=横からのパン */
 function overkillBoom(tp,y){OKS.impact();hitSlow(.8,.55);CAM.shake=1.7;CAM.fovKick=14;const fl=$('sdFlash');if(fl){fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');}
   fireball(tp.clone().setY(y),1.5);for(let i=0;i<3;i++)setTimeout(()=>shock(tp.clone().setY(i?.04:y),2.4+i*1.5,i?0xff4a3a:0xffb040),i*80);showTech('Overkill','');}
@@ -2969,6 +3014,7 @@ async function mainAttack(p,m,ev,foe,name,u){
   const rl=roulette(new THREE.Vector3(tp.x,barY(tgt.t)+.62,tp.z),m.dmin,m.dmax);SFX.spin();
   if(m.cannon){await cannonShot(p,tgt,dir,sp,tp,foe);ev.contact=tp.clone().addScaledVector(dir,-.4);}
   else{
+    if(name&&MATE_CAM===7)mateRecStart(p,tgt);   /* ここから収録 */
     await tween(.24,k=>lean(p.mesh,dir,-.28*eOut(k)));
     if(!foe){if(dist>2.2)frameTwo(sp,tp);else sideShot(sp,tp);}
     const contact=hop?tp.clone():tp.clone().addScaledVector(dir,-.52);let d0=0;const onKT=hop?trampleTracker(p,u,sp,tp):null;moveSound(p,dist,'start',Math.min(.9,.18+dist*.09));
@@ -2980,7 +3026,7 @@ async function mainAttack(p,m,ev,foe,name,u){
   SFX.hit(dist);if(crit)SFX.crit();stopRoulette(rl,dmg,q);
   const mate=kill&&tgt.t==='K';
   if(mate){if(MATE_CAM===8)mateReplay(p,tgt,Math.floor(Math.random()*5));
-    else mateOrbit(tgt,2.2,mateMode===3?40:26);}
+    else if(MATE_CAM!==7)mateOrbit(tgt,2.2,mateMode===3?40:26);}
   hitSlow(mate?1.1:crit?.6:kill?.42:.3,mate?.9:crit?.55:kill?.45:.3);CAM.shake=crit||kill?1.1:graze?.4:.7;CAM.fovKick=crit?11:kill?9:graze?3:6;
   tgt.mesh.userData.mat.emissive.setRGB(.55,.42,.3);shock(hitPos,kill?3:2.2,kill?0xf3c86a:0xefe9dc);burst(hitPos,kill?26:18,sparkMat,4.5,.45,5,1);
   if(crit)shock(hitPos,3.6,0xf3c86a);
@@ -2994,6 +3040,7 @@ async function mainAttack(p,m,ev,foe,name,u){
       lean(p.mesh,dir,0);p.mesh.position.y=0;}
     await fl;await wait(.3);scene.remove(hb.spr);return;}
   SFX.crack();
+  if(mate&&MATE_CAM===7)await matePlayback();
   if(mate){await tween(.38,k=>{lean(tgt.mesh,dir,.38+1.05*eIn(k));tgt.mesh.position.copy(tp).addScaledVector(dir,.14+.25*eIn(k));});
     tgt.mesh.visible=false;scene.remove(hb.spr);shards(tgt,dir);SFX.shatter();CAM.shake=.6;burst(new THREE.Vector3(tp.x,.08,tp.z),22,dustMat,1.8,.9,1.5,2.4);}
   else if(ev.overkill){scene.remove(hb.spr);overkillBoom(tp,.55);obliterate(tgt,5);craterAt(tp);await wait(.9);}
@@ -4772,7 +4819,7 @@ function loop(now){requestAnimationFrame(loop);frameN++;const rdt=Math.min((now-
   if(!busy)ff=1;
   updateSlow(rdt);const dt=rdt*timeScale;
   for(let i=tweens.length-1;i>=0;i--){const w=tweens[i];w.t+=dt;const k=Math.min(1,w.t/w.d);w.fn(w.ease(k),dt);if(k>=1){tweens.splice(i,1);w.res();}}
-  updateParts(dt);updateRings(dt);updatePops(rdt);updateRoulettes(rdt);updateCam(rdt);updateAuras(now);uiFrame(now,rdt);skFrame(now);updateBare(now,rdt);updateSD(now);bgmTick(now);shotFrame(now);
+  updateParts(dt);updateRings(dt);updatePops(rdt);updateRoulettes(rdt);updateCam(rdt);updateAuras(now);uiFrame(now,rdt);skFrame(now);mateRecTick();updateBare(now,rdt);updateSD(now);bgmTick(now);shotFrame(now);
   markers.children.forEach(m=>{if(m.userData.spin)m.rotation.z+=rdt*1.5;});
   ring.material.opacity=.7+Math.sin(now/250)*.25;
   renderer.render(scene,camera);}
@@ -6458,6 +6505,7 @@ if(location.protocol!=='capacitor:')window.__G={net:()=>({mode:ON.mode,code:RM.c
 })();
 </script>
 <div id="turnFx"><div class="in"><b></b><i></i></div></div>
+<div id="mateRp"><b>REPLAY</b></div>
 <div id="tutFing"></div><div id="tutMask"></div>
 <div id="tutCap"><span id="tutTxt"></span><i id="tutNx"></i></div>
 </body>
