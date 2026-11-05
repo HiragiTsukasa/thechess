@@ -1903,6 +1903,26 @@ function mateOrbit(t,sec,deg){const c=t.mesh.position.clone();const p0=CAM.pos.c
   const r=Math.hypot(p0.x-c.x,p0.z-c.z),a0=Math.atan2(p0.z-c.z,p0.x-c.x),y0=p0.y;
   return tween(sec,k=>{const a=a0+deg*Math.PI/180*eOut(k);
     CAM.shot={pos:new THREE.Vector3(c.x+Math.cos(a)*r,y0+.25*eOut(k),c.z+Math.sin(a)*r),look:l0};});}
+/* 決めの瞬間を3つの角度から continuous に見せる。
+   スローの最中でも尺が崩れないよう、時間は実時間で測る */
+function mateReplay(p,t,first){
+  const rest=[0,1,2,3,4].filter(m=>m!==first);
+  for(let i=rest.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const x=rest[i];rest[i]=rest[j];rest[j]=x;}
+  const order=[first,rest[0],rest[1]],HOLD=[640,640,980];
+  const c=t.mesh.position.clone();
+  let idx=-1,t0=0,rig=null,r=0,a0=0;
+  const step=now=>{
+    if(idx<0||now-t0>=HOLD[idx]){
+      idx++;if(idx>=order.length)return;
+      t0=now;rig=mateShot(p,t,order[idx]);
+      r=Math.hypot(rig.pos.x-c.x,rig.pos.z-c.z);a0=Math.atan2(rig.pos.z-c.z,rig.pos.x-c.x);
+      CAM.fovKick=Math.max(CAM.fovKick,idx?5:0);}
+    const k=Math.min(1,(now-t0)/HOLD[idx]);
+    const a=a0+(idx%2?-1:1)*12*Math.PI/180*k;
+    const q={pos:new THREE.Vector3(c.x+Math.cos(a)*r,rig.pos.y+.16*k,c.z+Math.sin(a)*r),look:rig.look};
+    CAM.shot=q;CAM.pos.copy(q.pos);CAM.look.copy(q.look);
+    requestAnimationFrame(step);};
+  requestAnimationFrame(step);}
 function finisher(k,dir){
   const crown=new THREE.Group();const mat=k.mesh.userData.mat;
   const a=new THREE.Mesh(new THREE.BoxGeometry(.06,.23,.06),mat),b=new THREE.Mesh(new THREE.BoxGeometry(.16,.06,.06),mat);b.position.y=.03;crown.add(a,b);
@@ -2837,7 +2857,7 @@ const OKS={
 let OK_PIERCE=1.2,OK_DIVE_Y=1.55;
 let FK_PATH=1;      /* 0=毎回自分のマスへ戻る  1=三角形の経路 */
 let OK_CAM=9,OK_FAR=3.4;   /* 9=即肩越しと追従をランダムに選ぶ */
-let MATE_CAM=9;            /* チェックメイトのキルカメラ。9=ランダム */
+let MATE_CAM=8;            /* チェックメイトのキルカメラ。8=多視点リプレイ 9=1種をランダム */
 let OK_SH_ANG=25,OK_SH_Y=.45,OK_SH_R=1.0;  /* 肩越しの振り角・高さ・引き */  /* 長距離オーバーキルのカメラ。0=追従 1=肩越し即 2=途中で肩越し 3=横からのパン */
 function overkillBoom(tp,y){OKS.impact();hitSlow(.8,.55);CAM.shake=1.7;CAM.fovKick=14;const fl=$('sdFlash');if(fl){fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');}
   fireball(tp.clone().setY(y),1.5);for(let i=0;i<3;i++)setTimeout(()=>shock(tp.clone().setY(i?.04:y),2.4+i*1.5,i?0xff4a3a:0xffb040),i*80);showTech('Overkill','');}
@@ -2959,7 +2979,8 @@ async function mainAttack(p,m,ev,foe,name,u){
   const hitPos=new THREE.Vector3(lerp(contact.x,tp.x,.5),hop?.3:.7,lerp(contact.z,tp.z,.5));
   SFX.hit(dist);if(crit)SFX.crit();stopRoulette(rl,dmg,q);
   const mate=kill&&tgt.t==='K';
-  if(mate)mateOrbit(tgt,2.2,mateMode===3?40:26);
+  if(mate){if(MATE_CAM===8)mateReplay(p,tgt,Math.floor(Math.random()*5));
+    else mateOrbit(tgt,2.2,mateMode===3?40:26);}
   hitSlow(mate?1.1:crit?.6:kill?.42:.3,mate?.9:crit?.55:kill?.45:.3);CAM.shake=crit||kill?1.1:graze?.4:.7;CAM.fovKick=crit?11:kill?9:graze?3:6;
   tgt.mesh.userData.mat.emissive.setRGB(.55,.42,.3);shock(hitPos,kill?3:2.2,kill?0xf3c86a:0xefe9dc);burst(hitPos,kill?26:18,sparkMat,4.5,.45,5,1);
   if(crit)shock(hitPos,3.6,0xf3c86a);

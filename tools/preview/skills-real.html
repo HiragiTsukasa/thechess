@@ -35,7 +35,8 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
     <button type="button" data-ok="0">追従</button><button type="button" data-ok="1">肩越し即</button>
     <button type="button" data-ok="2">途中</button><button type="button" data-ok="3">真横</button></span>
   <span class="grp"><span>キルカメラ</span>
-    <button type="button" data-mt="9">ランダム</button>
+    <button type="button" data-mt="8">多視点</button>
+    <button type="button" data-mt="9">1種ランダム</button>
     <button type="button" data-mt="0">攻め手の肩越し</button><button type="button" data-mt="1">王の正面ロー</button>
     <button type="button" data-mt="2">真横すれすれ</button><button type="button" data-mt="3">見下ろし</button>
     <button type="button" data-mt="4">王の肩越し</button></span>
@@ -90,7 +91,8 @@ document.getElementById('bF').addEventListener('click',()=>load(POS_F,
   'h1クイーンをタップ→a8をタップ→もう一度タップでチェックメイト。キルカメラを切り替えて比べられる。'));
 const MTN=['攻め手の肩越し','王の正面ロー','真横すれすれ','見下ろし','王の肩越し'];
 const paintMt=seg('data-mt',v=>{G.mateSet(v);
-  msg.textContent=v===9?'決めのカメラは毎回ランダムで選ばれる。':'決めのカメラ：'+MTN[v]+'。';});
+  msg.textContent=v===8?'決めの瞬間を3つの角度から続けて見せる。':
+    v===9?'決めのカメラを5種から毎回ランダムで選ぶ。':'決めのカメラ：'+MTN[v]+'。';});
 const paintAng=seg('data-ang',v=>{G.shSet(v,null,null);msg.textContent='肩越しの振り角 '+v+'°。射線の真後ろが0°、真横が90°。';});
 const paintShy=seg('data-shy',v=>{G.shSet(null,v,null);msg.textContent='肩越しの高さ '+v+'。';});
 const paintShr=seg('data-shr',v=>{G.shSet(null,null,v);msg.textContent='肩越しの引き ×'+v+'。';});
