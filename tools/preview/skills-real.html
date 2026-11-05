@@ -25,15 +25,11 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
 </style>
 <iframe id="stage" src="game.html" allow="autoplay; fullscreen" title="The Chess: Groundbreaking"></iframe>
 <div id="bar">
-  <button type="button" id="bD">フォーク</button>
-  <button type="button" id="bE">遠距離オーバーキル</button>
-  <button type="button" id="bF">チェックメイト</button>
-  <span class="grp"><span>フォーク経路</span>
-    <button type="button" data-fk="0">戻る</button><button type="button" data-fk="1">三角</button></span>
-  <span class="grp"><span>遠距離カメラ</span>
-    <button type="button" data-ok="9">ランダム</button>
-    <button type="button" data-ok="0">追従</button><button type="button" data-ok="1">肩越し即</button>
-    <button type="button" data-ok="2">途中</button><button type="button" data-ok="3">真横</button></span>
+  <button type="button" data-pos="Q">クイーン</button>
+  <button type="button" data-pos="R">ルーク</button>
+  <button type="button" data-pos="B">ビショップ</button>
+  <button type="button" data-pos="N">ナイト</button>
+  <button type="button" data-pos="P">ポーン</button>
   <span class="grp"><span>キルカメラ</span>
     <button type="button" data-mt="7">リプレイ</button>
     <button type="button" data-mt="8">多視点</button>
@@ -41,64 +37,56 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
     <button type="button" data-mt="0">攻め手の肩越し</button><button type="button" data-mt="1">王の正面ロー</button>
     <button type="button" data-mt="2">真横すれすれ</button><button type="button" data-mt="3">見下ろし</button>
     <button type="button" data-mt="4">王の肩越し</button></span>
-  <span class="grp"><span>肩越し 振り角</span>
-    <button type="button" data-ang="25">25°</button><button type="button" data-ang="45">45°</button>
-    <button type="button" data-ang="60">60°</button><button type="button" data-ang="80">80°</button></span>
-  <span class="grp"><span>高さ</span>
-    <button type="button" data-shy="0.45">低</button><button type="button" data-shy="1">中</button>
-    <button type="button" data-shy="2.1">高</button></span>
-  <span class="grp"><span>引き</span>
-    <button type="button" data-shr="0.75">寄り</button><button type="button" data-shr="1">標準</button>
-    <button type="button" data-shr="1.5">引き</button></span>
   <span id="msg">読み込み中…</span>
 </div>
 <script>
 try{localStorage.setItem('nc_tut1','1');localStorage.setItem('nc_tut2','1');}catch(e){}
-const W=(t,s)=>['w',t,s], B=(t,s)=>['b',t,s];
-/* d5 のクイーンが5体を狙える。どの2体にするか選ぶ盤面 */
-const POS_D=[W('K','g1'),W('Q','d5'),W('P','a2'),W('P','g2'),W('P','h2'),
-  B('K','g8'),B('R','d8'),B('N','b5'),B('B','g5'),B('P','d7'),B('P','a8'),B('P','h7')];
-/* h1 のクイーンが a8 の瀕死ビショップを7マス先から撃つ。追従カメラが置いていかれる距離 */
-const POS_E=[W('K','e1'),W('Q','h1'),W('P','b2'),W('P','h2'),W('P','e2'),
-  B('K','g8'),['b','B','a8',{hp:40}],B('P','g7'),B('P','h7'),B('N','f6')];
-/* h1 のクイーンが a8 の瀕死キングを討つ。チェックメイトの決め演出 */
-const POS_F=[W('K','e1'),W('Q','h1'),W('R','d1'),W('P','b2'),W('P','h2'),W('P','e2'),
-  ['b','K','a8',{hp:60}],B('P','a7'),B('P','c7'),B('N','f6'),B('P','g7')];
+const W=(t,s,o)=>o?['w',t,s,o]:['w',t,s], B=(t,s,o)=>o?['b',t,s,o]:['b',t,s];
+/* 討ち取る駒ごとのチェックメイト盤面。どれも白番、1手で決まる */
+const BOARDS={
+ Q:{name:'クイーン',from:'h1',to:'a8',
+    pos:[W('K','e1'),W('Q','h1'),W('R','d1'),W('P','b2'),W('P','h2'),W('P','e2'),
+         B('K','a8',{hp:60}),B('P','a7'),B('P','c7'),B('N','f6'),B('P','g7')],
+    tip:'h1のクイーンが長い対角線を一気に詰める。'},
+ R:{name:'ルーク',from:'d8',to:'h8',
+    pos:[W('K','e1'),W('R','d8'),W('P','a2'),W('P','b2'),W('P','c2'),
+         B('K','h8',{hp:60}),B('P','g7'),B('P','h7'),B('N','c6'),B('P','a7')],
+    tip:'最下段を横に走る Back Rank Mate。'},
+ B:{name:'ビショップ',from:'c3',to:'h8',
+    pos:[W('K','e1'),W('B','c3'),W('P','a2'),W('P','b2'),W('P','h2'),
+         B('K','h8',{hp:60}),B('P','h7'),B('P','f7'),B('R','a8'),B('N','b8')],
+    tip:'c3のビショップが対角線を抜く。'},
+ N:{name:'ナイト',from:'f7',to:'h8',
+    pos:[W('K','e1'),W('N','f7'),W('Q','d1'),W('P','a2'),W('P','h2'),
+         B('K','h8',{hp:60}),B('R','g8'),B('P','g7'),B('P','h7')],
+    tip:'味方に囲まれた王をナイトが討つ Smothered Mate。'},
+ P:{name:'ポーン',from:'b7',to:'a8',
+    pos:[W('K','e1'),W('P','b7'),W('R','d1'),W('P','a2'),W('P','h2'),
+         B('K','a8',{hp:5}),B('P','c7'),B('N','f6'),B('P','g7')],
+    tip:'成る直前のポーンが王を討つ。'}};
 const msg=document.getElementById('msg');
-let G=null;
+let G=null,cur=null;
 function waitG(cb){const f=document.getElementById('stage');let n=0;
   const t=setInterval(()=>{let g=null;
     try{g=f.contentWindow&&f.contentWindow.__G;}catch(e){}
     if(g&&g.setPos){clearInterval(t);G=g;cb(g);}
     else if(++n>400){clearInterval(t);msg.textContent='ゲームの読み込みに失敗した。再読み込みしてみて。';}},150);}
-function load(pos,label,ep){if(!G){msg.textContent='読み込み中…';return;}
-  try{G.setPos(pos,'w',ep);msg.textContent=label;}catch(e){msg.textContent='盤面を置けなかった：'+e.message;}}
-document.getElementById('bD').addEventListener('click',()=>load(POS_D,
-  'd5クイーンをタップ→Forkを選ぶ→狙える5体から2体をタップで決める。もう一度タップで実行。'));
-document.getElementById('bE').addEventListener('click',()=>load(POS_E,
-  'h1クイーンをタップ→a8をタップ→もう一度タップで発動。右のカメラ切替で見え方を比べられる。'));
-/* 切替スイッチ。盤面を置き直さずにその場で効く */
-function seg(attr,fn){const bs=[...document.querySelectorAll('#bar button['+attr+']')];
-  const paint=v=>bs.forEach(b=>b.classList.toggle('on',Math.abs(+b.getAttribute(attr)-v)<1e-6));
-  bs.forEach(b=>b.addEventListener('click',()=>{const v=+b.getAttribute(attr);
-    if(!G){msg.textContent='読み込み中…';return;}fn(v);paint(v);}));
-  return paint;}
-const paintFk=seg('data-fk',v=>{G.fkSet(v);
-  msg.textContent=v?'フォークは1撃目の位置から2撃目へ向かう（三角形）。':'フォークは毎回自分のマスへ戻る。';});
-const paintOk=seg('data-ok',v=>{G.okCamSet(v,3.4);
-  msg.textContent=['遠距離も追従カメラのまま。','点火した瞬間に相手の肩越しへ切り替える。',
-    '少し追ってから、飛行の途中で相手の肩越しへ。','真横から引いて、飛んでいく全体を見せる。'][v];});
-document.getElementById('bF').addEventListener('click',()=>load(POS_F,
-  'h1クイーンをタップ→a8をタップ→もう一度タップでチェックメイト。キルカメラを切り替えて比べられる。'));
+function load(k){const d=BOARDS[k];if(!G){msg.textContent='読み込み中…';return;}
+  try{G.setPos(d.pos,'w');cur=k;
+    msg.textContent=d.tip+' '+d.from+'をタップ→'+d.to+'をタップ→もう一度タップで決まる。';
+    [...document.querySelectorAll('#bar button[data-pos]')]
+      .forEach(b=>b.classList.toggle('on',b.getAttribute('data-pos')===k));}
+  catch(e){msg.textContent='盤面を置けなかった：'+e.message;}}
+[...document.querySelectorAll('#bar button[data-pos]')]
+  .forEach(b=>b.addEventListener('click',()=>load(b.getAttribute('data-pos'))));
 const MTN=['攻め手の肩越し','王の正面ロー','真横すれすれ','見下ろし','王の肩越し'];
-const paintMt=seg('data-mt',v=>{G.mateSet(v);
-  msg.textContent=v===7?'決める直前の数秒を、別の視点から2回見直す。':
+const mtBs=[...document.querySelectorAll('#bar button[data-mt]')];
+const paintMt=v=>mtBs.forEach(b=>b.classList.toggle('on',+b.getAttribute('data-mt')===v));
+mtBs.forEach(b=>b.addEventListener('click',()=>{const v=+b.getAttribute('data-mt');
+  if(!G){msg.textContent='読み込み中…';return;}
+  G.mateSet(v);paintMt(v);
+  msg.textContent=v===7?'決める直前を、別の視点から2回見直す。':
     v===8?'決めの瞬間を3つの角度から続けて見せる。':
-    v===9?'決めのカメラを5種から毎回ランダムで選ぶ。':'決めのカメラ：'+MTN[v]+'。';});
-const paintAng=seg('data-ang',v=>{G.shSet(v,null,null);msg.textContent='肩越しの振り角 '+v+'°。射線の真後ろが0°、真横が90°。';});
-const paintShy=seg('data-shy',v=>{G.shSet(null,v,null);msg.textContent='肩越しの高さ '+v+'。';});
-const paintShr=seg('data-shr',v=>{G.shSet(null,null,v);msg.textContent='肩越しの引き ×'+v+'。';});
-waitG(()=>{load(POS_D,'d5クイーンをタップ→Forkを選ぶ→狙える5体から2体を決めて発動。');
-  try{paintFk(G.fk());paintOk(G.okCam()[0]);
-    const sh=G.sh();paintAng(sh[0]);paintShy(sh[1]);paintShr(sh[2]);paintMt(G.mate());}catch(e){}});
+    v===9?'決めのカメラを5種から毎回ランダムで選ぶ。':'決めのカメラ：'+MTN[v]+'。';}));
+waitG(()=>{load('Q');try{paintMt(G.mate());}catch(e){}});
 </script>
