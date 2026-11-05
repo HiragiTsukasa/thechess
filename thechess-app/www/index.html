@@ -5701,46 +5701,6 @@ function rkResult(win,demo){
 
 
 /* ══ 確認用：リザルト演出の通し再生（?dev=1 のときだけ） ═══ */
-function rkDemoRate(kind){
- const t=tierOf(RKS.rate);
- if(kind==='tier')return t.hi-5;                       /* 段の上限ぎわ */
- if(kind==='rank'){                                     /* 階級の境目ぎわ */
-  for(let i=t.idx+1;i<RKN;i++){const a=rngOf(i-1),b=rngOf(i);
-   if(a.ri!==b.ri)return b.lo-5;}
-  return t.hi-5;}
- if(kind==='down'){                                     /* 失う意匠が見える段から落とす */
-  for(let i=RKN-1;i>0;i--){const r=rngOf(i);if(r.ti>=3)return r.lo+2;}
-  return t.lo+2;}
- if(kind==='rankdown'){                                 /* 階級の境目のすぐ上から落とす */
-  for(let i=RKN-1;i>0;i--){const a=rngOf(i-1),b=rngOf(i);
-   if(a.ri!==b.ri&&b.ri>=4)return b.lo+2;}
-  return t.lo+2;}
- return t.lo+Math.round((t.hi-t.lo)/2);}                /* ふつう */
-async function rkDemo(kind){
- if(rkDemo._busy)return;rkDemo._busy=1;              /* 再生中の重ね押しを無視 */
- const save=RKS.rate,saveRanked=ranked;
- RKS.rate=rkDemoRate(kind);rkOpRate=RKS.rate+((kind==='down'||kind==='rankdown')?260:40);
- ranked=true;pClose();
- try{await rkResult(kind!=='down'&&kind!=='rankdown',true);}catch(e){}
- RKS.rate=save;ranked=saveRanked;rkSave();plLast='';plSync();rkDemo._busy=0;}
-{/* 確認用パネル。?dev=1 で開くか、ランク画面のレートの数字を5回タップで出る */
- const box=document.createElement('div');
- box.style.cssText='display:none;gap:5px;flex-wrap:wrap;width:100%;margin-top:4px';
- box.innerHTML=TR('<div style="width:100%;font-size:9px;letter-spacing:.1em;color:var(--sub)">演出の確認（開発用）</div>')
-  +[['win',TR('ふつうの勝ち')],['tier',TR('昇段')],['rank',TR('昇格')],['down',TR('降段')],['rankdown',TR('降格')]]
-   .map(a=>'<button type="button" class="mini" data-d="'+a[0]+'" style="flex:1;min-width:70px">'+a[1]+'</button>').join('');
- box.addEventListener('click',e=>{const b=e.target.closest('[data-d]');if(!b)return;
-  audio();rkDemo(b.dataset.d);});
- const pn=$('rkPanel')&&$('rkPanel').querySelector('.pnl');
- if(pn)pn.appendChild(box);
- const show=()=>{box.style.display='flex';};
- if(DEVBUY)show();
- let tp=0,tt=0;
- const rr=$('rkRate');
- if(rr)rr.addEventListener('click',()=>{const n=Date.now();
-  if(n-tt>1200)tp=0;tt=n;tp++;
-  if(tp>=5){tp=0;show();toast(TR('演出の確認パネルを出しました'));}});}
-
 /* ══ 確認ダイアログ ════════════════════════════ */
 function confirmPanel(title,msg,ok,fn){
  $('cfT').textContent=title;$('cfM').innerHTML=msg;$('cfOk').textContent=ok;cfYes=fn;pOpen('cfPanel');}
