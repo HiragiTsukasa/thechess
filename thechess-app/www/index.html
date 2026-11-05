@@ -518,6 +518,13 @@ body.titleOn #tutQ{opacity:0;pointer-events:none}
 #tutFing{position:fixed;width:30px;height:30px;border-radius:50%;background:rgba(239,233,220,.92);
  box-shadow:0 0 0 10px rgba(239,233,220,.12);z-index:24;pointer-events:none;display:none;
  transform:translate(-50%,-50%)}
+/* 説明に関係のあるところだけ明るく残し、まわりを少し落とす。
+   真っ黒で覆うと盤が読めなくなるので、ビネット程度に。 */
+#tutMask{position:fixed;inset:0;z-index:22;pointer-events:none;display:none;
+ transition:opacity .25s ease;opacity:0;
+ background:radial-gradient(circle var(--tr,210px) at var(--tx,50%) var(--ty,46%),
+   rgba(6,7,9,0) 0%,rgba(6,7,9,0) 42%,rgba(6,7,9,.30) 72%,rgba(6,7,9,.52) 100%)}
+#tutMask.on{opacity:1}
 /* 「タップで次へ」は本文と別の行。本文に継ぎ足すと改行がずれる */
 #tutCap i{display:block;margin-top:5px;font-size:11px;font-style:normal;
  letter-spacing:.1em;color:var(--brass)}
@@ -5722,9 +5729,18 @@ function tutMark(){try{localStorage.setItem(TUTK,'1');}catch(e){}}
 let tutA=null;
 function tutPE(ty,x,y){try{$('view').dispatchEvent(new PointerEvent(ty,{pointerId:99,pointerType:'touch',
  isPrimary:true,clientX:x,clientY:y,bubbles:true,cancelable:true}));}catch(e){}}
+function tutMaskOn(x,y,r){const m=$('tutMask');if(!m)return;
+ m.style.display='block';m.style.setProperty('--tx',x+'px');m.style.setProperty('--ty',y+'px');
+ if(r)m.style.setProperty('--tr',r+'px');
+ requestAnimationFrame(()=>m.classList.add('on'));}
+function tutMaskMove(x,y,r){const m=$('tutMask');if(!m)return;
+ m.style.setProperty('--tx',x+'px');m.style.setProperty('--ty',y+'px');
+ if(r)m.style.setProperty('--tr',r+'px');}
+function tutMaskOff(){const m=$('tutMask');if(!m)return;
+ m.classList.remove('on');setTimeout(()=>{if(!m.classList.contains('on'))m.style.display='none';},260);}
 function tutCapT(t){const c=$('tutTxt');if(c)c.textContent=t;
  const n=$('tutNx');if(n&&!n.textContent)n.textContent=TR('タップで次へ');}
-function tutStop(){if(!tutA)return;const{x,y}=tutA;cancelAnimationFrame(tutA.raf||0);tutA=null;
+function tutStop(){if(!tutA)return;const{x,y}=tutA;cancelAnimationFrame(tutA.raf||0);tutA=null;tutMaskOff();
  tutPE('pointermove',x,y);tutPE('pointerup',x,y);          /* 原点へ戻してから離す＝取り消し */
  const f=$('tutFing'),c=$('tutCap');if(f)f.style.display='none';if(c)c.style.display='none';
  $('tutQ')&&$('tutQ').classList.remove('hot');}
@@ -5736,6 +5752,7 @@ function tutStart(){
  tutA={t0:performance.now(),st:performance.now(),x,y,step:0,from:0,cur:0};tutMark();
  const f=$('tutFing'),c=$('tutCap');if(f){f.style.display='block';f.style.left=x+'px';f.style.top=y+'px';}
  if(c)c.style.display='block';
+ tutMaskOn(x,y,210);
  $('tutQ')&&$('tutQ').classList.add('hot');
  tutPE('pointerdown',x,y);
  cancelAnimationFrame(tutA.raf||0);const tick=()=>{if(!tutA)return;tutFrame();if(tutA)tutA.raf=requestAnimationFrame(tick);};
@@ -5750,7 +5767,9 @@ const TUT_S=[
 function tutNext(){
  if(!tutA)return;
  tutA.from=tutA.cur;tutA.step++;tutA.st=performance.now();
- if(tutA.step>=TUT_S.length)tutStop();}
+ if(tutA.step>=TUT_S.length){tutStop();return;}
+ /* 指を離した扱いになっていても困らないよう、同じ原点で引っぱりを張り直す */
+ tutPE('pointerdown',tutA.x,tutA.y);}
 function tutFrame(){
  if(!tutA)return;
  if(!sel||busy||over||!humanTurn()){tutStop();return;}
@@ -5760,6 +5779,7 @@ function tutFrame(){
  const dy=tutA.from+(s.dy-tutA.from)*k;tutA.cur=dy;
  const fy=y+dy;
  tutPE('pointermove',x,fy);
+ tutMaskMove(x,fy);
  tutCapT(TR(s.cap));
  const f=$('tutFing');if(f){f.style.left=x+'px';f.style.top=fy+'px';}}
 const uiSelectRaw=uiSelect;
@@ -5769,6 +5789,10 @@ $('view').addEventListener('pointerdown',e=>{if(e.pointerId===99)return;
  /* 説明の最中のタップは「次へ」。盤には渡さない（駒が動いてしまうため） */
  if(tutA){e.stopPropagation();tutNext();return;}
  if(typeof tut2!=='undefined'&&tut2){e.stopPropagation();tut2Next();return;}},true);
+/* up も止める。渡すと盤が「指を離した」と見て引っぱりを解除し、矢印と白い線が消える */
+for(const ev of ['pointerup','pointercancel'])
+ $('view').addEventListener(ev,e=>{if(e.pointerId===99)return;
+  if(tutA||(typeof tut2!=='undefined'&&tut2))e.stopPropagation();},true);
 $('tutQ')&&$('tutQ').addEventListener('click',e=>{e.stopPropagation();audio();
  if(tutA){tutStop();return;}
  if(typeof tut2!=='undefined'&&tut2){tut2Stop();return;}
@@ -5785,7 +5809,7 @@ let tut2=null;
 function scrOf(p){try{const v=p.mesh.position.clone();v.y=.75;v.project(camera);
  return[(v.x*.5+.5)*innerWidth,(-v.y*.5+.5)*innerHeight];}catch(e){return[innerWidth*.5,innerHeight*.5];}}
 function tut2Back(){let n=0;while(uiSkill&&n++<6){try{uiToggle(sel);}catch(e){break;}}}
-function tut2Stop(){if(!tut2)return;cancelAnimationFrame(tut2.raf||0);tut2=null;tut2Back();
+function tut2Stop(){if(!tut2)return;cancelAnimationFrame(tut2.raf||0);tut2=null;tut2Back();tutMaskOff();
  const f=$('tutFing'),c=$('tutCap');if(f)f.style.display='none';if(c)c.style.display='none';
  $('tutQ')&&$('tutQ').classList.remove('hot');}
 function tut2Can(){return sel&&humanTurn()&&!busy&&!over&&modesOf(sel).length>0;}
@@ -5793,6 +5817,7 @@ function tut2Start(){
  if(tut2||tutA||!tut2Can())return;
  tut2={t0:performance.now(),st:performance.now(),p:sel,step:0};tut2Mark();
  const f=$('tutFing'),c=$('tutCap');if(f)f.style.display='block';if(c)c.style.display='block';
+ {const [mx,my]=scrOf(sel);tutMaskOn(mx,my,170);}
  $('tutQ')&&$('tutQ').classList.add('hot');
  const tick=()=>{if(!tut2)return;tut2Frame();if(tut2)tut2.raf=requestAnimationFrame(tick);};
  tut2.raf=requestAnimationFrame(tick);}
@@ -5807,6 +5832,7 @@ function tut2Frame(){
  if(!tut2)return;
  if(sel!==tut2.p||busy||over||!humanTurn()){tut2Stop();return;}
  const [x,y]=scrOf(tut2.p),f=$('tutFing');
+ tutMaskMove(x,y,170);
  const st=tut2.step|0,t=(performance.now()-(tut2.st||tut2.t0))/1000;
  if(st===0){tutCapT(TR('選んだ駒を、もう一度タップ'));
   if(f){f.style.display='block';f.style.left=x+'px';f.style.top=y+'px';f.style.transform='translate(-50%,-50%)';}}
@@ -6127,6 +6153,7 @@ if(location.protocol!=='capacitor:')window.__G={net:()=>({mode:ON.mode,code:RM.c
 })();
 </script>
 <div id="turnFx"><div class="in"><b></b><i></i></div></div>
-<div id="tutFing"></div><div id="tutCap"><span id="tutTxt"></span><i id="tutNx"></i></div>
+<div id="tutFing"></div><div id="tutMask"></div>
+<div id="tutCap"><span id="tutTxt"></span><i id="tutNx"></i></div>
 </body>
 </html>
