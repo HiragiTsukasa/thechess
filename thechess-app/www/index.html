@@ -1554,7 +1554,7 @@ addEventListener('DOMContentLoaded',()=>TRdom());
 #skCall b.off{background:rgba(9,11,14,.62);padding:5px 10px}
 #skCall b.off small{display:none}
 #skCall b.act::after{content:"";position:absolute;inset:-8px;border-radius:20px}
-#skCall b.sel{background:rgba(30,35,42,.96)}
+#skCall b.sel{background:rgba(32,37,45,.97);box-shadow:0 0 26px -6px currentColor,0 12px 22px -14px #000}
 </style>
 
 <script>
@@ -4435,8 +4435,8 @@ function skMark(){for(const it of skItems){const on=uiSkill===it.n;
   /* 選ばれている札は縁の色が濃くなるだけ。大きさは変えない */
   if(it.ok)it.b.style.borderColor=SKHUE[it.n]+(on?'':'55');
   it.ln.setAttribute('stroke-width',on?'3.2':'2.6');
-  if(on){ /* 切り替わった瞬間だけ弾ませる。大きさは元に戻す */
-    it.st=1.14;skTm.push(setTimeout(()=>{it.st=1;},150));}
+  if(on){ /* 選ばれた札は弾んでから、ひと回り大きいまま前に出る */
+    it.st=1.26;skTm.push(setTimeout(()=>{it.st=1.12;},160));}
   else it.st=1;}}
 /* 札は1枚ずつ指で押しのけられる。他の札は付いてこない */
 function skDragBind(b,it){
@@ -4453,8 +4453,8 @@ function skDragBind(b,it){
   b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);}
 /* 札をタップした時：まだ選ばれていなければ選ぶ。選ばれていて的が決まっていればそのまま撃つ */
 function skTapLabel(n,ok){if(!ok||busy||!humanTurn())return;
-  if(uiSkill!==n)skPick(n,true);
-  /* 決めることが残っていなければ、その1タップで撃つ */
+  /* 1タップ目は選んで前に出すだけ。もう一度押すと撃つ */
+  if(uiSkill!==n){skPick(n,true);return;}
   if(uiPending){uiConfirm();return;}
   if(n!=='Fork'&&uiCands&&uiCands.length===1){uiChoose(uiCands[0]);uiConfirm();}}
 function skPick(n,cycled){const p=skP||sel;if(!p||busy||!humanTurn())return;
@@ -4525,11 +4525,13 @@ function skFrame(now){if(!skP)return;if(!skP.alive||sel!==skP){skHide();return;}
     if(it.cx==null){it.cx=hubX-(right?0:ws[i]);it.cy=hubY;}
     const gx=born?tcx+fx:hubX-(right?0:ws[i]), gy=born?tcy+fy:hubY;
     it.cx+=(gx-it.cx)*ease; it.cy+=(gy-it.cy)*ease;
-    it.s+=((born?it.st:.72)-it.s)*ease;
+    const sel2=uiSkill===it.n;
+    const breathe=sel2?1+Math.sin(now/620+it.bob)*.014:1;
+    it.s+=((born?it.st*breathe:.72)-it.s)*ease;
     it.o+=((born?1:0)-it.o)*ease;
     it.b.style.transform='translate('+it.cx.toFixed(1)+'px,'+(it.cy-hs[i]/2).toFixed(1)+'px) scale('+it.s.toFixed(3)+')';
     it.b.style.opacity=it.o.toFixed(3);
-    const on=uiSkill===it.n;
+    const on=sel2;
     const op=(it.o*(on?1:it.ok?.85:.7));
     it.ln.style.opacity=op.toFixed(3);
     /* 根元から枝分かれして、札の縁にぴたりと刺さる。
