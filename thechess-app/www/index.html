@@ -1957,13 +1957,20 @@ async function matePlayback(){
   const p=r.p,t=r.t,pm=p.mesh,tm=t.mesh;
   const kp=pm.position.clone(),kq=pm.quaternion.clone();
   const kt=tm.position.clone(),ktq=tm.quaternion.clone(),kv=tm.visible;
-  const dur=Math.max(380,r.fr[r.fr.length-1].t);
+  /* 端末が遅いと収録の実時間が伸びる。直前の 1.6 秒だけを一定の尺で再生する */
+  const tEnd=r.fr[r.fr.length-1].t,tBeg=Math.max(0,tEnd-1600),span=Math.max(260,tEnd-tBeg);
+  const dur=span,PLAY=Math.min(1300,Math.max(850,span*1.45));
+  if(window.__RP)__RP.push({ev:'start',frames:r.fr.length,dur:+dur.toFixed(1),play:+PLAY.toFixed(0),
+    f0x:+r.fr[0].pp.x.toFixed(2),f0z:+r.fr[0].pp.z.toFixed(2),
+    fnx:+r.fr[r.fr.length-1].pp.x.toFixed(2),fnz:+r.fr[r.fr.length-1].pp.z.toFixed(2)});
   const pool=[0,1,2,3];
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const x=pool[i];pool[i]=pool[j];pool[j]=x;}
-  const sample=u=>{const T=u*dur;let i=1;while(i<r.fr.length-1&&r.fr[i].t<T)i++;
+  const sample=u=>{const T=tBeg+u*span;let i=1;while(i<r.fr.length-1&&r.fr[i].t<T)i++;
     const a=r.fr[i-1],b=r.fr[i],w=Math.min(1,Math.max(0,(T-a.t)/Math.max(1,b.t-a.t)));
     pm.position.lerpVectors(a.pp,b.pp,w);pm.quaternion.copy(a.pq).slerp(b.pq,w);
     tm.position.lerpVectors(a.tp,b.tp,w);tm.quaternion.copy(a.tq).slerp(b.tq,w);};
+  /* 再生中はスローを解く。残していると粒子だけ這って見える */
+  slowT=0;slowRecT=-1;timeScale=1;
   const rp=$('mateRp');if(rp)rp.classList.add('on');
   /* 当たった後の王ののけぞりまで含めて1本に。本番と同じ動き */
   const dirR=new THREE.Vector3().subVectors(kt,r.fr[0].pp).setY(0);
@@ -1975,11 +1982,24 @@ async function matePlayback(){
       q.pos.y+=.18*u;                      /* 寄るほど少しだけ持ち上がる */
       CAM.shot=q;CAM.pos.copy(q.pos);CAM.look.copy(q.look);};
     sample(0);cam(0);
-    await rafPlay(Math.max(860,dur*1.5),k=>{sample(k);cam(k*.7);});
-    await rafPlay(380,k=>{const e=eIn(k);
+    if(window.__RP)__RP.push({ev:'pass',n,rig:pool[n],t:performance.now()});
+    await rafPlay(PLAY,k=>{sample(k);cam(k*.7);
+      if(window.__RP)__RP.push({ev:'run',n,k:+k.toFixed(3),t:performance.now(),
+        px:+pm.position.x.toFixed(3),pz:+pm.position.z.toFixed(3),
+        tx:+tm.position.x.toFixed(3),tz:+tm.position.z.toFixed(3),
+        cx:+CAM.pos.x.toFixed(3),cz:+CAM.pos.z.toFixed(3),cy:+CAM.pos.y.toFixed(3)});});
+    /* 当たった手応え。これが無いと王が理由もなく倒れて見える */
+    {const hp2=new THREE.Vector3((kt.x+pm.position.x)/2,.7,(kt.z+pm.position.z)/2);
+     shock(hp2,2.4,0xf3c86a);burst(hp2,16,sparkMat,4.2,.45,5,1);CAM.shake=.85;CAM.fovKick=7;
+     try{SFX.hit(2);}catch(e){}}
+    await rafPlay(340,k=>{const e=eIn(k);
       lean(tm,dirR,.38+1.05*e);tm.position.copy(kt).addScaledVector(dirR,.14+.25*e);
-      cam(.7+k*.3);});
-    await rafPlay(180,()=>{});}
+      cam(.7+k*.3);
+      if(window.__RP)__RP.push({ev:'hit',n,k:+k.toFixed(3),t:performance.now(),
+        px:+pm.position.x.toFixed(3),pz:+pm.position.z.toFixed(3),
+        tx:+tm.position.x.toFixed(3),tz:+tm.position.z.toFixed(3),
+        cx:+CAM.pos.x.toFixed(3),cz:+CAM.pos.z.toFixed(3),cy:+CAM.pos.y.toFixed(3)});});
+    await rafPlay(170,()=>{});}
   lean(tm,dirR,0);
   if(rp)rp.classList.remove('on');
   pm.position.copy(kp);pm.quaternion.copy(kq);
