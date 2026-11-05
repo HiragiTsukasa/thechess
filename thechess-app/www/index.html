@@ -2963,7 +2963,8 @@ const OKS={
 let OK_PIERCE=1.2,OK_DIVE_Y=1.55;
 let FK_PATH=1;      /* 0=毎回自分のマスへ戻る  1=三角形の経路 */
 let OK_CAM=9,OK_FAR=3.4;   /* 9=即肩越しと追従をランダムに選ぶ */
-let MATE_CAM=22;           /* 0〜9=固定の構え 20=1種をランダム 21=決めの瞬間を3カット 22=直前を別視点で再生 */
+let MATE_CAM=23;           /* 0〜9=固定の構え 20=1種をランダム 21=3カット 22=リプレイ 23=見せ方ごとランダム */
+let mateNow=22;            /* この一撃で実際に使う見せ方 */
 let OK_SH_ANG=25,OK_SH_Y=.45,OK_SH_R=1.0;  /* 肩越しの振り角・高さ・引き */  /* 長距離オーバーキルのカメラ。0=追従 1=肩越し即 2=途中で肩越し 3=横からのパン */
 function overkillBoom(tp,y){OKS.impact();hitSlow(.8,.55);CAM.shake=1.7;CAM.fovKick=14;const fl=$('sdFlash');if(fl){fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');}
   fireball(tp.clone().setY(y),1.5);for(let i=0;i<3;i++)setTimeout(()=>shock(tp.clone().setY(i?.04:y),2.4+i*1.5,i?0xff4a3a:0xffb040),i*80);showTech('Overkill','');}
@@ -3058,7 +3059,10 @@ async function mainAttack(p,m,ev,foe,name,u){
     await tween(.4,k=>gt.forEach(g=>g.material.opacity=.55*k));await glide(p,m.f,m.r);
     tween(.4,k=>gt.forEach(g=>g.material.opacity=.55*(1-k))).then(()=>gt.forEach(g=>scene.remove(g)));}
   let mateMode=-1;
-  if(name){mateMode=MATE_CAM>=20?Math.floor(Math.random()*MATE_N):MATE_CAM;
+  if(name){
+    /* 見せ方そのものを引く。同じ決め手でも毎回違う画になる */
+    mateNow=MATE_CAM===23?[22,21,20][Math.floor(Math.random()*3)]:MATE_CAM;
+    mateMode=mateNow>=20?Math.floor(Math.random()*MATE_N):mateNow;
     const rig0=mateShot(p,tgt,mateMode);camRig(rig0);CAM.shot=rig0;
     showTech(name,TR('王への最後の一撃'));await wait(.9);}
   else{const t=(m.tags||[]).find(x=>['Battery','Outpost','Desperado','Skewer'].includes(x));if(t)showTech(t);
@@ -3078,7 +3082,7 @@ async function mainAttack(p,m,ev,foe,name,u){
   const rl=roulette(new THREE.Vector3(tp.x,barY(tgt.t)+.62,tp.z),m.dmin,m.dmax);SFX.spin();
   if(m.cannon){await cannonShot(p,tgt,dir,sp,tp,foe);ev.contact=tp.clone().addScaledVector(dir,-.4);}
   else{
-    if(name&&MATE_CAM===22)mateRecStart(p,tgt);  /* ここから収録 */
+    if(name&&mateNow===22)mateRecStart(p,tgt);   /* ここから収録 */
     await tween(.24,k=>lean(p.mesh,dir,-.28*eOut(k)));
     if(!foe){if(dist>2.2)frameTwo(sp,tp);else sideShot(sp,tp);}
     const contact=hop?tp.clone():tp.clone().addScaledVector(dir,-.52);let d0=0;const onKT=hop?trampleTracker(p,u,sp,tp):null;moveSound(p,dist,'start',Math.min(.9,.18+dist*.09));
@@ -3089,8 +3093,8 @@ async function mainAttack(p,m,ev,foe,name,u){
   const hitPos=new THREE.Vector3(lerp(contact.x,tp.x,.5),hop?.3:.7,lerp(contact.z,tp.z,.5));
   SFX.hit(dist);if(crit)SFX.crit();stopRoulette(rl,dmg,q);
   const mate=kill&&tgt.t==='K';
-  if(mate){if(MATE_CAM===21)mateReplay(p,tgt,Math.floor(Math.random()*MATE_N));
-    else if(MATE_CAM!==22)mateOrbit(tgt,2.2,mateMode===3?40:26);}
+  if(mate){if(mateNow===21)mateReplay(p,tgt,Math.floor(Math.random()*MATE_N));
+    else if(mateNow!==22)mateOrbit(tgt,2.2,mateMode===3?40:26);}
   hitSlow(mate?1.1:crit?.6:kill?.42:.3,mate?.9:crit?.55:kill?.45:.3);CAM.shake=crit||kill?1.1:graze?.4:.7;CAM.fovKick=crit?11:kill?9:graze?3:6;
   tgt.mesh.userData.mat.emissive.setRGB(.55,.42,.3);shock(hitPos,kill?3:2.2,kill?0xf3c86a:0xefe9dc);burst(hitPos,kill?26:18,sparkMat,4.5,.45,5,1);
   if(crit)shock(hitPos,3.6,0xf3c86a);
@@ -3109,7 +3113,7 @@ async function mainAttack(p,m,ev,foe,name,u){
     /* まず本番の一撃を最後まで見せる。ここで切るとリプレイが2撃目に見える */
     await tween(.38,k=>{lean(tgt.mesh,dir,.38+1.05*eIn(k));tgt.mesh.position.copy(tp).addScaledVector(dir,.14+.25*eIn(k));});
     if(window.__RP)__RP.push({ev:'realLeanDone',t:performance.now()});
-    if(MATE_CAM===22){await rafPlay(620,()=>{});await matePlayback();}
+    if(mateNow===22){await rafPlay(620,()=>{});await matePlayback();}
     if(window.__RP)__RP.push({ev:'rpDone',t:performance.now()});
     tgt.mesh.visible=false;scene.remove(hb.spr);shards(tgt,dir);SFX.shatter();CAM.shake=.6;burst(new THREE.Vector3(tp.x,.08,tp.z),22,dustMat,1.8,.9,1.5,2.4);}
   else if(ev.overkill){scene.remove(hb.spr);overkillBoom(tp,.55);obliterate(tgt,5);craterAt(tp);await wait(.9);}

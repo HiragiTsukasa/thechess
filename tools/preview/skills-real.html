@@ -31,6 +31,7 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
   <button type="button" data-pos="N">ナイト</button>
   <button type="button" data-pos="P">ポーン</button>
   <span class="grp"><span>キルカメラ</span>
+    <button type="button" data-mt="23">全部ランダム</button>
     <button type="button" data-mt="22">リプレイ</button>
     <button type="button" data-mt="21">多視点</button>
     <button type="button" data-mt="20">1種ランダム</button></span>
@@ -90,7 +91,8 @@ const paintMt=v=>mtBs.forEach(b=>b.classList.toggle('on',+b.getAttribute('data-m
 mtBs.forEach(b=>b.addEventListener('click',()=>{const v=+b.getAttribute('data-mt');
   if(!G){msg.textContent='読み込み中…';return;}
   G.mateSet(v);paintMt(v);
-  msg.textContent=v===22?'決める直前を、別の視点から2回見直す。':
+  msg.textContent=v===23?'リプレイ／3カット／1種固定を、決めるたびに引く。構えも10種から。':
+    v===22?'決める直前を、別の視点から2回見直す。':
     v===21?'決めの瞬間を3つの角度から続けて見せる。':
     v===20?'決めのカメラを10種から毎回ランダムで選ぶ。':'決めのカメラ：'+MTN[v]+'。';}));
 waitG(()=>{load('Q');try{paintMt(G.mate());}catch(e){}});
