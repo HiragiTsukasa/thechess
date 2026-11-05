@@ -1886,6 +1886,23 @@ async function promote(p,squares){
 // finisher: king falls
 const hemi=scene.children.find(o=>o.isHemisphereLight);const baseLight={h:hemi.intensity,k:key.intensity,r:rim.intensity};
 function restoreLights(){hemi.intensity=baseLight.h;key.intensity=baseLight.k;rim.intensity=baseLight.r;$('fin').classList.remove('on');}
+/* チェックメイトの決めカメラ。0=攻め手の肩越し 1=王の正面ロー 2=真横すれすれ
+   3=見下ろし 4=王の肩越し。倒す瞬間はどれもゆっくり回り込む */
+const MATE_NAME=['攻め手の肩越し','王の正面ロー','真横すれすれ','見下ろし','王の肩越し'];
+function mateShot(p,t,mode){
+  const tp=t.mesh.position.clone(),sp=p.mesh.position.clone();
+  const d=new THREE.Vector3(tp.x-sp.x,0,tp.z-sp.z);if(d.lengthSq()<.01)d.set(0,0,1);d.normalize();
+  const sd=new THREE.Vector3(-d.z,0,d.x),mid=tp.clone().lerp(sp,.5);
+  if(mode===1)return{pos:tp.clone().addScaledVector(d,1.5).addScaledVector(sd,.55).setY(.5),look:sp.clone().setY(.75)};
+  if(mode===2)return{pos:mid.clone().addScaledVector(sd,2.5).setY(.28),look:mid.clone().setY(.6)};
+  if(mode===3)return{pos:tp.clone().addScaledVector(d,-.5).addScaledVector(sd,1.4).setY(3.1),look:tp.clone().setY(.35)};
+  if(mode===4)return{pos:tp.clone().addScaledVector(d,.95).addScaledVector(sd,-1.5).setY(1.05),look:sp.clone().setY(.55)};
+  return{pos:sp.clone().addScaledVector(d,-2.1).addScaledVector(sd,.34).setY(1.0),look:tp.clone().setY(.45)};}
+/* 決めの瞬間、的を中心にゆっくり回す */
+function mateOrbit(t,sec,deg){const c=t.mesh.position.clone();const p0=CAM.pos.clone(),l0=CAM.look.clone();
+  const r=Math.hypot(p0.x-c.x,p0.z-c.z),a0=Math.atan2(p0.z-c.z,p0.x-c.x),y0=p0.y;
+  return tween(sec,k=>{const a=a0+deg*Math.PI/180*eOut(k);
+    CAM.shot={pos:new THREE.Vector3(c.x+Math.cos(a)*r,y0+.25*eOut(k),c.z+Math.sin(a)*r),look:l0};});}
 function finisher(k,dir){
   const crown=new THREE.Group();const mat=k.mesh.userData.mat;
   const a=new THREE.Mesh(new THREE.BoxGeometry(.06,.23,.06),mat),b=new THREE.Mesh(new THREE.BoxGeometry(.16,.06,.06),mat);b.position.y=.03;crown.add(a,b);
@@ -2819,7 +2836,8 @@ const OKS={
    OK_DIVE_Y … 上から落とすとき、この高さまで降りた時点 */
 let OK_PIERCE=1.2,OK_DIVE_Y=1.55;
 let FK_PATH=1;      /* 0=毎回自分のマスへ戻る  1=三角形の経路 */
-let OK_CAM=1,OK_FAR=3.4;
+let OK_CAM=9,OK_FAR=3.4;   /* 9=即肩越しと追従をランダムに選ぶ */
+let MATE_CAM=9;            /* チェックメイトのキルカメラ。9=ランダム */
 let OK_SH_ANG=25,OK_SH_Y=.45,OK_SH_R=1.0;  /* 肩越しの振り角・高さ・引き */  /* 長距離オーバーキルのカメラ。0=追従 1=肩越し即 2=途中で肩越し 3=横からのパン */
 function overkillBoom(tp,y){OKS.impact();hitSlow(.8,.55);CAM.shake=1.7;CAM.fovKick=14;const fl=$('sdFlash');if(fl){fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');}
   fireball(tp.clone().setY(y),1.5);for(let i=0;i<3;i++)setTimeout(()=>shock(tp.clone().setY(i?.04:y),2.4+i*1.5,i?0xff4a3a:0xffb040),i*80);showTech('Overkill','');}
@@ -2860,7 +2878,8 @@ async function missile(p,t,ev){const tp=t.mesh.position.clone(),sp=p.mesh.positi
                    look:c.clone().lerp(tp,.45).addScaledVector(dir,.6).setY(.5)});
   const ride=c=>{const cs=chase(c);CAM.shot=cs;CAM.pos.copy(cs.pos);CAM.look.copy(cs.look);return cs;};
   /* 遠いと追従カメラが置いていかれる。相手側に先回りして、飛んでくるところを受け止める */
-  const far=L>OK_FAR&&OK_CAM>0;
+  const camMode=OK_CAM===9?(Math.random()<.5?0:1):OK_CAM;
+  const far=L>OK_FAR;
   /* 的の斜め後ろ。射線から OK_SH_ANG 度振り、高さと引きで絵を決める */
   const shoulder=()=>{const ang=OK_SH_ANG*Math.PI/180;
     const off=new THREE.Vector3().copy(dir).multiplyScalar(Math.cos(ang))
@@ -2869,10 +2888,10 @@ async function missile(p,t,ev){const tp=t.mesh.position.clone(),sp=p.mesh.positi
             look:tp.clone().addScaledVector(dir,-Math.min(2.4,L*.36)).setY(.55)};};
   const sideOn=()=>({pos:mid.clone().addScaledVector(sd,side*(2.4+L*.42)).setY(2.1+L*.12),
                      look:mid.clone().setY(.5)});
-  const cut=far?(OK_CAM===3?sideOn():shoulder()):null;
+  const cut=far?(camMode===3?sideOn():shoulder()):null;
   /* 1 は構え・点火から相手側で見る。2・3 は飛び出しまで追ってから回り込む。
      どちらも切り替えではなく、カメラが移動して繋ぐ */
-  const early=far&&OK_CAM!==2;
+  const early=far&&(camMode===1||camMode===3);
   const rig=early?cut:chase(sp);
   /* 駒を選んだ時の俯瞰から切り替えず、カメラ自身が肩越しの位置まで飛ぶ。
      移動は駒が垂直から水平へ倒れる間に済ませ、飛び出す頃には構えが決まっている */
@@ -2889,11 +2908,11 @@ async function missile(p,t,ev){const tp=t.mesh.position.clone(),sp=p.mesh.positi
   OKS.fly(.2+L*.05);let tr=0;const end=tp.clone().addScaledVector(dir,-.3).setY(hh);
   const cutAt=.30,BLEND=.34;   /* 飛行の3割から、3割強かけて肩越しへ回り込む */
   let okDone=false;const okFire=()=>{if(okDone)return;okDone=true;
-    CAM.shot=far?(OK_CAM===3?sideOn():shoulder())
+    CAM.shot=far&&camMode>0?(camMode===3?sideOn():shoulder())
       :{pos:tp.clone().addScaledVector(sd,side*2.6).addScaledVector(dir,-2.2).setY(1.6),look:tp.clone().setY(.6)};
     overkillBoom(tp,.55);const hb=barHit(t,ev,tp);scene.remove(hb.spr);obliterate(t,5);craterAt(tp);};
   await tween(.2+L*.05,(k,dt)=>{p.mesh.position.lerpVectors(back,end,eIn(k));if(p.mesh.position.distanceTo(tp)<=OK_PIERCE)okFire();
-    if(!far||early){if(early)CAM.shot=cut;else ride(p.mesh.position.clone().setY(0));}
+    if(!far||early||camMode===0){if(early)CAM.shot=cut;else ride(p.mesh.position.clone().setY(0));}
     else{const t=(k-cutAt)/BLEND;
       if(t<=0)ride(p.mesh.position.clone().setY(0));
       else if(t<1){const cs=chase(p.mesh.position.clone().setY(0)),e=eIO(t);
@@ -2912,7 +2931,10 @@ async function mainAttack(p,m,ev,foe,name,u){
     const gt=[[tgt.f,tgt.r+(tgt.side==='b'?2:-2)],[tgt.f,tgt.r+(tgt.side==='b'?1:-1)]].map(([f,r])=>glowTile(f,r,0xb69be0));
     await tween(.4,k=>gt.forEach(g=>g.material.opacity=.55*k));await glide(p,m.f,m.r);
     tween(.4,k=>gt.forEach(g=>g.material.opacity=.55*(1-k))).then(()=>gt.forEach(g=>scene.remove(g)));}
-  if(name){showTech(name,TR('王への最後の一撃'));await wait(.9);}
+  let mateMode=-1;
+  if(name){mateMode=MATE_CAM===9?Math.floor(Math.random()*5):MATE_CAM;
+    CAM.shot=mateShot(p,tgt,mateMode);
+    showTech(name,TR('王への最後の一撃'));await wait(.9);}
   else{const t=(m.tags||[]).find(x=>['Battery','Outpost','Desperado','Skewer'].includes(x));if(t)showTech(t);
     for(const md of (m.mods||[]))if(['Phalanx','Rampart'].includes(md[0]))showTech(md[0],'',tgt.side,tgt); // the defender's own skill
     for(const md of (m.mods||[]))if(['Dread','Death March'].includes(md[0]))showTech(md[0]);}
@@ -2937,6 +2959,7 @@ async function mainAttack(p,m,ev,foe,name,u){
   const hitPos=new THREE.Vector3(lerp(contact.x,tp.x,.5),hop?.3:.7,lerp(contact.z,tp.z,.5));
   SFX.hit(dist);if(crit)SFX.crit();stopRoulette(rl,dmg,q);
   const mate=kill&&tgt.t==='K';
+  if(mate)mateOrbit(tgt,2.2,mateMode===3?40:26);
   hitSlow(mate?1.1:crit?.6:kill?.42:.3,mate?.9:crit?.55:kill?.45:.3);CAM.shake=crit||kill?1.1:graze?.4:.7;CAM.fovKick=crit?11:kill?9:graze?3:6;
   tgt.mesh.userData.mat.emissive.setRGB(.55,.42,.3);shock(hitPos,kill?3:2.2,kill?0xf3c86a:0xefe9dc);burst(hitPos,kill?26:18,sparkMat,4.5,.45,5,1);
   if(crit)shock(hitPos,3.6,0xf3c86a);
@@ -6408,7 +6431,7 @@ window.__RB={mkPiece};   /* ルールブックの iframe が実物の駒モデ�
 /* デバッグ用の窓。アプリ（capacitor://）では開かない。盤面を作り替えたり
    相手の駒を消したりできてしまうので、製品に窓を残さない。
    ブラウザで開いたときだけ使える（確認用のスクリプトはこれを使っている）。 */
-if(location.protocol!=='capacitor:')window.__G={net:()=>({mode:ON.mode,code:RM.code,host:RM.host,direct:RM.direct,rtOpen:RT.open,pc:RT.pc&&RT.pc.connectionState,ch:RT.ch&&RT.ch.readyState,seen:RM.seen,poll:!!RM.poll,side:ON.side,moves:ON.moves.length,rx:RT.rx,tx:RT.tx,last:RT.last,buf:RT.buf.length,hasCb:!!RM.onmove}),noDirect:v=>{RT.noDirect=!!v;},bgm:()=>({key:bgmKey,want:bgmWant(),hush:bgmHush,se:Object.keys(SBUF).length,vo:Object.keys(voBuf).filter(k=>voBuf[k]&&voBuf[k]!=='loading').length,voStuck:Object.keys(voBuf).filter(k=>voBuf[k]==='loading').length,ac:AC&&AC.state,set:RKS.bgm,gain:bgmNode?+bgmNode.g.gain.value.toFixed(3):null,loop:bgmNode?[+bgmNode.src.loopStart.toFixed(4),+bgmNode.src.loopEnd.toFixed(4)]:null,bufs:Object.keys(BGM).filter(k=>BGM[k].buf),secs:+Object.keys(BGM).filter(k=>BGM[k].buf).reduce((x,k)=>x+BGM[k].buf.duration,0).toFixed(1),loading:Object.keys(BGM).filter(k=>BGM[k].loading),err:Object.keys(BGM).filter(k=>BGM[k].err).map(k=>k+': '+BGM[k].err)}),bgmSet:v=>{RKS.bgm=v;rkSave();bgmAt=0;},thin:(sd,keep)=>{let n=0;pieces.forEach(q=>{if(q.side===sd&&q.t!=='K'&&q.alive&&++n>(keep|0)){q.alive=false;q.hp=0;}});syncMeshes();},setBare:v=>{const k=pieces.find(q=>q.t==='K');k.bare=!!v;if(!v)pieces.forEach(q=>{q.bare=false;q.bareDone=false;});},setRanked:v=>{ranked=!!v;},toTitle:()=>{over=true;$('title').classList.remove('hide');},diag:()=>({frameN,last:+last.toFixed(1),busy,turn:turnSide,over,tw:tweens.length,ts:timeScale,ff,chain:!!chain,q:techQ.length,live:chainS.live.length,tws:tweens.map(w=>({d:w.d,t:+w.t.toFixed(2),fn:String(w.fn).slice(0,90)}))}),pzCount:()=>PUZZLES.length,pzTag:()=>PUZZLES[pzIdx]&&PUZZLES[pzIdx].tag,fx:()=>parts.length,ok:()=>({pierce:OK_PIERCE,diveY:OK_DIVE_Y}),okSet:(p,y)=>{if(p!=null)OK_PIERCE=+p;if(y!=null)OK_DIVE_Y=+y;},fk:()=>FK_PATH,fkSet:v=>{FK_PATH=+v;},okCam:()=>[OK_CAM,OK_FAR],okCamSet:(c,f)=>{if(c!=null)OK_CAM=+c;if(f!=null)OK_FAR=+f;},sh:()=>[OK_SH_ANG,OK_SH_Y,OK_SH_R],shSet:(a,y,r)=>{if(a!=null)OK_SH_ANG=+a;if(y!=null)OK_SH_Y=+y;if(r!=null)OK_SH_R=+r;},setPos:(list,side,ep)=>{mode='puzzle';humanSide='w';pzEnded=true;$('pzBar').classList.remove('on');$('result').classList.remove('on');$('pzDone').classList.remove('on');puzzleSetup(list,side||'w',ep);const t=$('title');t.classList.add('hide');t.classList.remove('leaving');CAM.shot=topShot();busy=true;setTimeout(()=>{busy=false;startHuman();},900);},startPuzzle:i=>startPuzzle(i),vo:()=>({loaded:Object.values(voBuf).filter(b=>b&&b!=='loading').length,cur:voCur&&{start:+voCur.start.toFixed(2),end:+voCur.end.toFixed(2),prio:voCur.prio},t:AC&&+AC.currentTime.toFixed(2)}),sd:()=>[stallN,sdStage],gmInfo:()=>({depth:gmDepthDone,nodes:gmNodes,ms:gmLastMs,maxd:GM_MAXD,budget:GM_MS}),sim:(lw,lb,maxP)=>{const snap=pieces.map(q=>({q,f:q.f,r:q.r,hp:q.hp,alive:q.alive,t:q.t,max:q.max,bare:q.bare,walked:q.walked,moved:q.moved,bonus:q.bonus}));let side='w',n=0,res='draw';
+if(location.protocol!=='capacitor:')window.__G={net:()=>({mode:ON.mode,code:RM.code,host:RM.host,direct:RM.direct,rtOpen:RT.open,pc:RT.pc&&RT.pc.connectionState,ch:RT.ch&&RT.ch.readyState,seen:RM.seen,poll:!!RM.poll,side:ON.side,moves:ON.moves.length,rx:RT.rx,tx:RT.tx,last:RT.last,buf:RT.buf.length,hasCb:!!RM.onmove}),noDirect:v=>{RT.noDirect=!!v;},bgm:()=>({key:bgmKey,want:bgmWant(),hush:bgmHush,se:Object.keys(SBUF).length,vo:Object.keys(voBuf).filter(k=>voBuf[k]&&voBuf[k]!=='loading').length,voStuck:Object.keys(voBuf).filter(k=>voBuf[k]==='loading').length,ac:AC&&AC.state,set:RKS.bgm,gain:bgmNode?+bgmNode.g.gain.value.toFixed(3):null,loop:bgmNode?[+bgmNode.src.loopStart.toFixed(4),+bgmNode.src.loopEnd.toFixed(4)]:null,bufs:Object.keys(BGM).filter(k=>BGM[k].buf),secs:+Object.keys(BGM).filter(k=>BGM[k].buf).reduce((x,k)=>x+BGM[k].buf.duration,0).toFixed(1),loading:Object.keys(BGM).filter(k=>BGM[k].loading),err:Object.keys(BGM).filter(k=>BGM[k].err).map(k=>k+': '+BGM[k].err)}),bgmSet:v=>{RKS.bgm=v;rkSave();bgmAt=0;},thin:(sd,keep)=>{let n=0;pieces.forEach(q=>{if(q.side===sd&&q.t!=='K'&&q.alive&&++n>(keep|0)){q.alive=false;q.hp=0;}});syncMeshes();},setBare:v=>{const k=pieces.find(q=>q.t==='K');k.bare=!!v;if(!v)pieces.forEach(q=>{q.bare=false;q.bareDone=false;});},setRanked:v=>{ranked=!!v;},toTitle:()=>{over=true;$('title').classList.remove('hide');},diag:()=>({frameN,last:+last.toFixed(1),busy,turn:turnSide,over,tw:tweens.length,ts:timeScale,ff,chain:!!chain,q:techQ.length,live:chainS.live.length,tws:tweens.map(w=>({d:w.d,t:+w.t.toFixed(2),fn:String(w.fn).slice(0,90)}))}),pzCount:()=>PUZZLES.length,pzTag:()=>PUZZLES[pzIdx]&&PUZZLES[pzIdx].tag,fx:()=>parts.length,ok:()=>({pierce:OK_PIERCE,diveY:OK_DIVE_Y}),okSet:(p,y)=>{if(p!=null)OK_PIERCE=+p;if(y!=null)OK_DIVE_Y=+y;},fk:()=>FK_PATH,fkSet:v=>{FK_PATH=+v;},okCam:()=>[OK_CAM,OK_FAR],okCamSet:(c,f)=>{if(c!=null)OK_CAM=+c;if(f!=null)OK_FAR=+f;},mate:()=>MATE_CAM,mateSet:v=>{MATE_CAM=+v;},sh:()=>[OK_SH_ANG,OK_SH_Y,OK_SH_R],shSet:(a,y,r)=>{if(a!=null)OK_SH_ANG=+a;if(y!=null)OK_SH_Y=+y;if(r!=null)OK_SH_R=+r;},setPos:(list,side,ep)=>{mode='puzzle';humanSide='w';pzEnded=true;$('pzBar').classList.remove('on');$('result').classList.remove('on');$('pzDone').classList.remove('on');puzzleSetup(list,side||'w',ep);const t=$('title');t.classList.add('hide');t.classList.remove('leaving');CAM.shot=topShot();busy=true;setTimeout(()=>{busy=false;startHuman();},900);},startPuzzle:i=>startPuzzle(i),vo:()=>({loaded:Object.values(voBuf).filter(b=>b&&b!=='loading').length,cur:voCur&&{start:+voCur.start.toFixed(2),end:+voCur.end.toFixed(2),prio:voCur.prio},t:AC&&+AC.currentTime.toFixed(2)}),sd:()=>[stallN,sdStage],gmInfo:()=>({depth:gmDepthDone,nodes:gmNodes,ms:gmLastMs,maxd:GM_MAXD,budget:GM_MS}),sim:(lw,lb,maxP)=>{const snap=pieces.map(q=>({q,f:q.f,r:q.r,hp:q.hp,alive:q.alive,t:q.t,max:q.max,bare:q.bare,walked:q.walked,moved:q.moved,bonus:q.bonus}));let side='w',n=0,res='draw';
   while(n<maxP){cpuLevel=side==='w'?lw:lb;const c=cpuChoose(side);if(!c){res='nomove';break;}const [p0,m0]=c;if(m0.attack)m0.roll=rollDmg(m0);if(m0.fork)m0.hits.forEach(h=>h.roll=rollDmg(h));make(p0,m0,false);n++;if(!kingOf('w')){res='b';break;}if(!kingOf('b')){res='w';break;}side=side==='w'?'b':'w';}
   for(const s0 of snap)Object.assign(s0.q,{f:s0.f,r:s0.r,hp:s0.hp,alive:s0.alive,t:s0.t,max:s0.max,bare:s0.bare,walked:s0.walked,moved:s0.moved,bonus:s0.bonus});lastMove=null;lastMover={w:null,b:null};discBuff={w:null,b:null};cpuLevel='normal';return [res,n];},setLv:v=>{cpuLevel=v;},timeCpu:(side,n)=>{const out=[];for(const lv of ['easy','normal','hard']){cpuLevel=lv;const t=performance.now();const r=cpuChoose(side);out.push([lv,Math.round(performance.now()-t),r&&('abcdefgh'[r[0].f]+r[0].r+'>'+'abcdefgh'[r[1].f]+r[1].r)]);}cpuLevel='normal';return out;},barTest:(from,to)=>{const q=pieces.find(x=>x.alive);const b=hpBar(q);b.shown=from;b.lag=from;drawBar(b);b.shown=to;b.lag=to;drawBar(b);const out=[];const t0=performance.now();return new Promise(res=>{const iv=setInterval(()=>{drawBar(b);out.push(b.disp);if(performance.now()-t0>700){clearInterval(iv);scene.remove(b.spr);res(out);}},60);});},tapSq:sq=>uiTap({f:'abcdefgh'.indexOf(sq[0]),r:+sq[1]}),ui:()=>({sel:sel&&('abcdefgh'[sel.f]+sel.r),skill:uiSkill,pending:!!uiPending,runes:runeG.children.length}),tech:(n,s)=>showTech(n,s),aim(p,m){focus(p);openPad();setTimeout(()=>{choose(m);padInfo(m);},450);},set speed(v){dbgSpeed=v},pieces,get busy(){return busy},get over(){return over},get turn(){return turnSide},start,playerMove:(p,m)=>playerMove(p,m),movesOfT,cpuChoose,skillMoves,forkMove,get sel(){return sel}};
 })();
