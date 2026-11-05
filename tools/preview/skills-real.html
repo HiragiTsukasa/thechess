@@ -25,9 +25,6 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
 </style>
 <iframe id="stage" src="game.html" allow="autoplay; fullscreen" title="The Chess: Groundbreaking"></iframe>
 <div id="bar">
-  <button type="button" id="bA">ルーク盤面</button>
-  <button type="button" id="bB">王と僧侶</button>
-  <button type="button" id="bC">ポーン</button>
   <button type="button" id="bD">フォーク</button>
   <button type="button" id="bE">遠距離オーバーキル</button>
   <span class="grp"><span>フォーク経路</span>
@@ -40,16 +37,6 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
 <script>
 try{localStorage.setItem('nc_tut1','1');localStorage.setItem('nc_tut2','1');}catch(e){}
 const W=(t,s)=>['w',t,s], B=(t,s)=>['b',t,s];
-/* ルークが Laser も Fork も成立。ナイトとクイーンは任意の技を持たない */
-const POS_A=[W('K','g1'),W('R','e5'),W('N','c3'),W('Q','d1'),W('P','a2'),W('P','b2'),W('P','g2'),W('P','h2'),
-  B('K','g8'),B('N','e8'),B('R','a5'),B('B','f6'),B('P','g7'),B('P','h7'),B('P','c7')];
-/* ビショップの Sanctuary とキングの Homecoming が成立。ルークは Laser がグレー */
-const POS_B=[W('K','e1'),W('B','d4'),W('R','h3'),['w','N','f3',{hp:220}],
-  W('P','c2'),W('P','e2'),W('P','g2'),
-  B('K','g8'),B('Q','d8'),B('R','a8'),B('B','c8'),B('N','b4'),B('P','a7'),B('P','b7'),B('P','g7')];
-/* e5ポーン＝アンパッサン成立、b7ポーン＝成り成立。ナイトとクイーンは任意の技を持たない */
-const POS_C=[W('K','e1'),W('R','h1'),W('P','e5'),W('P','b7'),W('N','c3'),W('Q','d1'),
-  B('K','g8'),B('P','d5'),B('R','a8'),B('N','f6'),B('P','g7'),B('P','h7')];
 /* d5 のクイーンが5体を狙える。どの2体にするか選ぶ盤面 */
 const POS_D=[W('K','g1'),W('Q','d5'),W('P','a2'),W('P','g2'),W('P','h2'),
   B('K','g8'),B('R','d8'),B('N','b5'),B('B','g5'),B('P','d7'),B('P','a8'),B('P','h7')];
@@ -65,14 +52,8 @@ function waitG(cb){const f=document.getElementById('stage');let n=0;
     else if(++n>400){clearInterval(t);msg.textContent='ゲームの読み込みに失敗した。再読み込みしてみて。';}},150);}
 function load(pos,label,ep){if(!G){msg.textContent='読み込み中…';return;}
   try{G.setPos(pos,'w',ep);msg.textContent=label;}catch(e){msg.textContent='盤面を置けなかった：'+e.message;}}
-document.getElementById('bA').addEventListener('click',()=>load(POS_A,
-  'e5ルーク＝Laser＋Fork。c3ナイトとd1クイーンは任意の技がないので札は出ない。'));
-document.getElementById('bB').addEventListener('click',()=>load(POS_B,
-  'd4ビショップ＝Sanctuary。e1キング＝Homecoming。h3ルークはLaserがグレー。'));
 document.getElementById('bD').addEventListener('click',()=>load(POS_D,
   'd5クイーンをタップ→Forkを選ぶ→狙える5体から2体をタップで決める。もう一度タップで実行。'));
-document.getElementById('bC').addEventListener('click',()=>load(POS_C,
-  'e5ポーン＝En Passant。b7ポーン＝Promotion。e1キング＝Castling＋Homecoming。',true));
 document.getElementById('bE').addEventListener('click',()=>load(POS_E,
   'h1クイーンをタップ→a8をタップ→もう一度タップで発動。右のカメラ切替で見え方を比べられる。'));
 /* 切替スイッチ。盤面を置き直さずにその場で効く */
@@ -86,6 +67,6 @@ const paintFk=seg('data-fk',v=>{G.fkSet(v);
 const paintOk=seg('data-ok',v=>{G.okCamSet(v,3.4);
   msg.textContent=['遠距離も追従カメラのまま。','点火した瞬間に相手の肩越しへ切り替える。',
     '少し追ってから、飛行の途中で相手の肩越しへ。','真横から引いて、飛んでいく全体を見せる。'][v];});
-waitG(()=>{load(POS_A,'駒を1タップで移動、もう一度タップで技が出る。');
+waitG(()=>{load(POS_D,'d5クイーンをタップ→Forkを選ぶ→狙える5体から2体を決めて発動。');
   try{paintFk(G.fk());paintOk(G.okCam()[0]);}catch(e){}});
 </script>
