@@ -2860,8 +2860,10 @@ async function missile(p,t,ev){const tp=t.mesh.position.clone(),sp=p.mesh.positi
   const ride=c=>{const cs=chase(c);CAM.shot=cs;CAM.pos.copy(cs.pos);CAM.look.copy(cs.look);return cs;};
   /* 遠いと追従カメラが置いていかれる。相手側に先回りして、飛んでくるところを受け止める */
   const far=L>OK_FAR&&OK_CAM>0;
-  const shoulder=()=>({pos:tp.clone().addScaledVector(dir,1.7).addScaledVector(sd,side*1.5).setY(1.25),
-                       look:tp.clone().addScaledVector(dir,-.6).setY(.7)});
+  /* 的の肩越し。真後ろではなく斜めに振って、的と攻め手の両方を画に入れる */
+  const shoulder=()=>({pos:tp.clone().addScaledVector(dir,1.5+L*.08)
+                               .addScaledVector(sd,side*(2.4+L*.16)).setY(1.5+L*.06),
+                       look:tp.clone().addScaledVector(dir,-Math.min(2.8,L*.45)).setY(.6)});
   const sideOn=()=>({pos:mid.clone().addScaledVector(sd,side*(2.4+L*.42)).setY(2.1+L*.12),
                      look:mid.clone().setY(.5)});
   const cut=far?(OK_CAM===3?sideOn():shoulder()):null;
