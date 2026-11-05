@@ -74,23 +74,27 @@ const $=id=>document.getElementById(id);
 const GLYPH={K:'♚',Q:'♛',R:'♜',B:'♝',N:'♞',P:'♟'};
 const NAME={K:'キング',Q:'クイーン',R:'ルーク',B:'ビショップ',N:'ナイト',P:'ポーン'};
 /* ゲーム本体と同じ並び・同じ色・同じ説明文 */
-const SKP={P:['Fork'],N:['Fork'],Q:['Fork'],B:['Sanctuary','Fork'],R:['Laser','Fork'],K:['Homecoming','Fork']};
-const SKHUE={Laser:'#ffc070',Sanctuary:'#8fe0a0',Homecoming:'#8fb8e0',Fork:'#ff7a5c'};
+const SKP={P:['En Passant','Promotion'],N:[],Q:[],B:['Sanctuary'],R:['Laser'],K:['Castling','Homecoming']};
+const SKHUE={Laser:'#ffc070',Sanctuary:'#8fe0a0',Homecoming:'#8fb8e0',Fork:'#ff7a5c',
+  Castling:'#8fb8e0','En Passant':'#b69be0',Promotion:'#f3c86a'};
 const SKNOTE={Laser:'動かずに直線上を撃つ',Sanctuary:'近くの味方を回復',
-  Homecoming:'自陣最下段へ戻る',Fork:'2体をまとめて攻撃'};
-const WHY={Laser:'縦横の直線上に敵がいない',Sanctuary:'近くに傷ついた味方がいない',
-  Homecoming:'この対局でもう使った',Fork:'一度に2体を狙える形になっていない'};
+  Homecoming:'自陣最下段へ戻る',Fork:'2体をまとめて攻撃',
+  Castling:'王とルークが入れ替わる','En Passant':'横を通ったポーンを取る',
+  Promotion:'最奥でクイーンに成る'};
+/* Fork は全駒共通。今まとめて狙える時だけ末尾に足す */
+const listOf=p=>(SKP[p.t]||[]).concat((p.on||[]).includes('Fork')?['Fork']:[]);
 
 /* 盤の中身。on に入っている技が「今撃てる」技 */
 const PIECES=[
  {t:'R',side:'w',sq:'e5',on:['Laser','Fork'],cand:{Laser:['e8','a5'],Fork:['e8','a5']},move:['e6','e7','d5','c5','b5','f5','g5','h5','e4','e3']},
  {t:'B',side:'w',sq:'c4',on:['Sanctuary'],cand:{Sanctuary:['c3','e5']},move:['b5','d5','b3','a2','d3','e2']},
- {t:'K',side:'w',sq:'g1',on:['Homecoming'],cand:{Homecoming:['a1','b1','c1','d1','e1','f1']},move:['f1','h1']},
+ {t:'K',side:'w',sq:'e1',on:['Castling','Homecoming'],cand:{Castling:['g1'],Homecoming:['a1','b1','c1','d1','f1','g1']},move:['d2','e2','f1','d1']},
  {t:'N',side:'w',sq:'c3',on:['Fork'],cand:{Fork:['e4','b5']},move:['a4','b5','d5','e4','e2','d1','b1','a2']},
- {t:'P',side:'w',sq:'g2',on:[],cand:{},move:['g3','g4']},
- {t:'Q',side:'w',sq:'d1',on:[],cand:{},move:['d2','d3','c1','e1','e2','c2']},
+ {t:'P',side:'w',sq:'d5',on:['En Passant'],cand:{'En Passant':['c6']},move:['d6']},
+ {t:'P',side:'w',sq:'g7',on:['Promotion'],cand:{Promotion:['g8']},move:['g8']},
+ {t:'Q',side:'w',sq:'h3',on:[],cand:{},move:['h4','h5','g3','f3','g4','f5']},
  {t:'N',side:'b',sq:'e8'},{t:'R',side:'b',sq:'a5'},{t:'B',side:'b',sq:'f6'},
- {t:'K',side:'b',sq:'g8'},{t:'P',side:'b',sq:'c7'},{t:'P',side:'b',sq:'h7'}
+ {t:'K',side:'b',sq:'g8'},{t:'P',side:'b',sq:'c5'},{t:'P',side:'b',sq:'h7'}
 ];
 const key=(f,r)=>'abcdefgh'[f]+r;
 const cells={};
@@ -121,18 +125,21 @@ function onPiece(p){
   if(p.side==='b'){deselect();note('相手の駒。');return;}
   if(sel!==p){deselect();sel=p;cur=null;paintMoves(p);
     note('<b>'+NAME[p.t]+'</b> を選択。ここまでは普通の移動と攻撃。もう一度タップすると技が出る。');return;}
-  if(!skItems.length){pick(firstOn(p),true);skOpen(p);return;}
-  const cyc=(p.on||[]).concat([null]);
+  if(!skItems.length){
+    if(!listOf(p).length){note('<b>'+NAME[p.t]+'</b> は自分から撃つ技を持たない。札は出ない。');return;}
+    pick(firstOn(p),true);skOpen(p);return;}
+  const cyc=skItems.filter(it=>it.ok).map(it=>it.n).concat([null]);
+  if(cyc.length<2)return;
   pick(cyc[(cyc.indexOf(cur)+1)%cyc.length],true);
 }
-const firstOn=p=>(p.on&&p.on[0])||null;
+const firstOn=p=>listOf(p).find(n=>(p.on||[]).includes(n))||null;
 function deselect(){sel=null;cur=null;clearBoard();skHide();}
 document.addEventListener('click',()=>{deselect();note('');});
 
 function skHide(){skTm.forEach(clearTimeout);skTm=[];skItems=[];
   [...document.querySelectorAll('#skCall b')].forEach(b=>b.remove());
   $('skLn').innerHTML='';$('skStem').style.opacity='0';$('skDot').style.opacity='0';}
-function skOpen(p){skHide();const names=SKP[p.t]||[];const on=new Set(p.on||[]);
+function skOpen(p){skHide();const names=listOf(p);const on=new Set(p.on||[]);
   const g=$('skLn');
   skItems=names.map(n=>{const ok=on.has(n);
     const b=document.createElement('b');b.className=ok?'act':'off';
@@ -154,7 +161,7 @@ function skOpen(p){skHide();const names=SKP[p.t]||[];const on=new Set(p.on||[]);
   skItems.forEach((it,i)=>skTm.push(setTimeout(()=>{
     it.b.style.setProperty('--o','1');it.b.style.setProperty('--s',cur===it.n?'1.07':'1');
     it.ln.style.opacity=it.ok?(cur===it.n?'1':'.5'):'.4';},40+i*60)));
-  if(!(p.on||[]).length)note('<b>'+NAME[p.t]+'</b> の技は <b>'+(SKP[p.t]||[]).join('・')+'</b>。今は条件を満たしていないので灰色のまま。');
+  if(!(p.on||[]).length)note('<b>'+NAME[p.t]+'</b> の技は <b>'+listOf(p).join('・')+'</b>。今は条件を満たしていないので灰色のまま。');
 }
 function mark(){for(const it of skItems){const on=cur===it.n;
   it.b.classList.toggle('sel',on);
@@ -193,5 +200,5 @@ function frame(){if(!sel||!skItems.length)return;
       +'L'+colX.toFixed(1)+' '+cy.toFixed(1));
     y+=hs[i]+PAD;});}
 addEventListener('resize',frame);
-note('白い駒をタップしてみて。e5 のルークは Laser も Fork も成立している。g2 のポーンと d1 のクイーンは成立していないので灰色になる。');
+note('白い駒をタップしてみて。Fork は全駒共通なので、今まとめて狙える駒にだけ並ぶ。h3 のクイーンのように自分から撃つ技を持たない駒には札が出ない。');
 </script>
