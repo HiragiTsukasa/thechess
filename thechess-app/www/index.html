@@ -4398,21 +4398,19 @@ const skListOf=p=>(SKP[p.t]||[]).concat(forkMove(p)?['Fork']:[]);
 const SKNS='http://www.w3.org/2000/svg';
 const skCall=document.createElement('div');skCall.id='skCall';
 skCall.innerHTML='<svg>'
- +'<path id="skStemB" fill="none" stroke="#0a0c0f" stroke-width="5.2" stroke-linecap="round" opacity="0"></path>'
- +'<g id="skLnB"></g>'
  +'<path id="skStem" fill="none" stroke="#f2f4f6" stroke-width="2.6" stroke-linecap="round" opacity="0"></path>'
  +'<g id="skLn"></g>'
- +'<circle id="skDot" r="3.6" fill="#f4f6f8" stroke="#0a0c0f" stroke-width="1.4" opacity="0"></circle></svg>';
+ +'<circle id="skDot" r="3.6" fill="#f4f6f8" opacity="0"></circle></svg>';
 document.body.appendChild(skCall);
 let skP=null,skItems=[],skTm=[],skSide=null,skDrag=null,skT0=0,skMovedAt=-9999;
 function skHide(){skTm.forEach(clearTimeout);skTm=[];skSide=null;skDrag=null;
   if(!skP&&!skItems.length)return;skP=null;skItems=[];
   [...skCall.querySelectorAll('b')].forEach(b=>b.remove());
-  const g=$('skLn');if(g)g.innerHTML='';const gb=$('skLnB');if(gb)gb.innerHTML='';
-  $('skDot').style.opacity='0';$('skStem').style.opacity='0';$('skStemB').style.opacity='0';}
+  const g=$('skLn');if(g)g.innerHTML='';
+  $('skDot').style.opacity='0';$('skStem').style.opacity='0';}
 /* 2タップ目。その駒の技をぜんぶ出す */
 function skOpen(p){skHide();skP=p;const names=skListOf(p);const on=new Set(modesOf(p));
-  const g=$('skLn'),gb=$('skLnB');
+  const g=$('skLn');
   skItems=names.map((n,i)=>{const ok=on.has(n);
     const b=document.createElement('b');b.className=ok?'act':'off';
     b.style.borderColor=ok?SKHUE[n]+'55':'rgba(255,255,255,.14)';
@@ -4424,14 +4422,11 @@ function skOpen(p){skHide();skP=p;const names=skListOf(p);const on=new Set(modes
       if(performance.now()-skMovedAt<260)return;   /* 押しのけただけ。技は選ばない */
       skTapLabel(n,ok);});
     skCall.appendChild(b);
-    const lb=document.createElementNS(SKNS,'path');lb.setAttribute('fill','none');
-    lb.setAttribute('stroke','#0a0c0f');lb.setAttribute('stroke-linecap','round');
-    lb.setAttribute('stroke-width','5.2');lb.style.opacity='0';gb.appendChild(lb);
     const ln=document.createElementNS(SKNS,'path');ln.setAttribute('fill','none');
     ln.setAttribute('stroke',ok?SKHUE[n]:'#c3c8ce');ln.setAttribute('stroke-linecap','round');
     ln.setAttribute('stroke-width','2.6');ln.style.opacity='0';g.appendChild(ln);
     /* cx,cy は今いる場所。最初は駒元に置いて、そこから目的地へ伸びていく */
-    const it={n,ok,b,ln,lb,off:{x:0,y:0},cx:null,cy:null,s:.72,o:0,st:.72,
+    const it={n,ok,b,ln,off:{x:0,y:0},cx:null,cy:null,s:.72,o:0,st:.72,
       bob:Math.random()*6.28,born:performance.now()+i*70};
     skDragBind(b,it);return it;});
   skT0=performance.now();skFrame();}
@@ -4440,7 +4435,6 @@ function skMark(){for(const it of skItems){const on=uiSkill===it.n;
   /* 選ばれている札は縁の色が濃くなるだけ。大きさは変えない */
   if(it.ok)it.b.style.borderColor=SKHUE[it.n]+(on?'':'55');
   it.ln.setAttribute('stroke-width',on?'3.2':'2.6');
-  it.lb.setAttribute('stroke-width',on?'6':'5.2');
   if(on){ /* 切り替わった瞬間だけ弾ませる。大きさは元に戻す */
     it.st=1.14;skTm.push(setTimeout(()=>{it.st=1;},150));}
   else it.st=1;}}
@@ -4536,7 +4530,7 @@ function skFrame(now){if(!skP)return;if(!skP.alive||sel!==skP){skHide();return;}
     it.b.style.opacity=it.o.toFixed(3);
     const on=uiSkill===it.n;
     const op=(it.o*(on?1:it.ok?.85:.7));
-    it.ln.style.opacity=op.toFixed(3);it.lb.style.opacity=(op*.62).toFixed(3);
+    it.ln.style.opacity=op.toFixed(3);
     /* 根元から枝分かれして、札の縁にぴたりと刺さる。
        中心から根元の方向へ辺まで伸ばした点を使うので、必ず札に付く */
     const hw=ws[i]/2*it.s,hh=hs[i]/2*it.s,cx2=it.cx+ws[i]/2,cy2=it.cy;
@@ -4545,13 +4539,12 @@ function skFrame(now){if(!skP)return;if(!skP.alive||sel!==skP){skHide();return;}
     const sN=Math.max(0,Math.min(sx,sy)-1.5);
     const ex=cx2+ux*sN,ey=cy2+uy*sN;
     const d2='M'+hubX.toFixed(1)+' '+hubY.toFixed(1)+'L'+ex.toFixed(1)+' '+ey.toFixed(1);
-    it.ln.setAttribute('d',d2);it.lb.setAttribute('d',d2);
+    it.ln.setAttribute('d',d2);
     if(born)shown=Math.max(shown,it.o);
     y+=hs[i]+PAD;});
   const d='M'+a.x.toFixed(1)+' '+a.y.toFixed(1)+'L'+hubX.toFixed(1)+' '+hubY.toFixed(1);
-  $('skStem').setAttribute('d',d);$('skStemB').setAttribute('d',d);
+  $('skStem').setAttribute('d',d);
   $('skStem').style.opacity=(shown*.95).toFixed(3);
-  $('skStemB').style.opacity=(shown*.62).toFixed(3);
   $('skDot').setAttribute('cx',a.x.toFixed(1));$('skDot').setAttribute('cy',a.y.toFixed(1));
   $('skDot').style.opacity=(shown*.95).toFixed(3);}
 function uiTap(sq){
