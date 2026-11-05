@@ -3345,9 +3345,7 @@ async function performFork0(p,m,foe){curActor=p;
   CAM.shot={pos:new THREE.Vector3(home.x+1.2*s,3,home.z+2.8*s),look:new THREE.Vector3(home.x,.4,home.z-1.2*s)};
   await wait(.8);
   for(const h of m.hits){const ev=u.ev.find(e=>e.kind==='fork'&&e.tgt===h.attack);if(!ev)continue;const tgt=h.attack;const tp=tgt.mesh.position.clone();
-    if(window.__RP)__RP.push({ev:'fkFrame',t:performance.now()});
-    frameTwo(from,tp);await wait(.3);
-    if(window.__RP)__RP.push({ev:'fkGo',t:performance.now()});
+    frameTwo(from,tp);await wait(.45);
     const dir=new THREE.Vector3(tp.x-from.x,0,tp.z-from.z);const dist=dir.length();dir.normalize();
     const kill=ev.kill;const crit=h.roll>h.dmax,graze=false,q=crit?1:.5;
     const b=hpBar(tgt);b.shown=ev.hp0;b.lag=ev.hp0;drawBar(b);b.spr.position.set(tp.x,barY(tgt.t),tp.z);
@@ -3356,7 +3354,6 @@ async function performFork0(p,m,foe){curActor=p;
     const contact=tp.clone().addScaledVector(dir,-.5);const hop=p.t==='N';
     await tween(hop?.36:.08+dist*.035,k=>{p.mesh.position.lerpVectors(from,contact,hop?eIO(k):eIn(k));if(hop)p.mesh.position.y=Math.sin(k*Math.PI)*.9;else lean(p.mesh,dir,lerp0(-.25,.3,k*3));});
     p.mesh.position.y=0;SFX.hit(dist);if(crit)SFX.crit();stopRoulette(rl,h.roll,q);
-    if(window.__RP)__RP.push({ev:'fkHit',t:performance.now(),kill,ts:timeScale});
     hitSlow(crit?.45:kill?.35:.22,crit?.4:.3);CAM.shake=crit||kill?1:graze?.4:.7;CAM.fovKick=crit?10:6;
     const hitPos=new THREE.Vector3(lerp(contact.x,tp.x,.5),.7,lerp(contact.z,tp.z,.5));
     tgt.mesh.userData.mat.emissive.setRGB(.55,.42,.3);shock(hitPos,kill?3:2.2,crit?0xf3c86a:0xefe9dc);burst(hitPos,kill?24:14,sparkMat,4.5,.45,5,1);
@@ -3372,9 +3369,7 @@ async function performFork0(p,m,foe){curActor=p;
     else{
       await tween(.34,k=>{p.mesh.position.lerpVectors(contact,home,eOut(k));p.mesh.position.y=Math.sin(k*Math.PI)*.25;lean(p.mesh,dir,.3*(1-k));});
       p.mesh.position.copy(home);lean(p.mesh,dir,0);from=home.clone();}
-    if(window.__RP)__RP.push({ev:'fkStay',t:performance.now()});
-    await wait(kill?1.05:.75);
-    if(window.__RP)__RP.push({ev:'fkEnd',t:performance.now()});}
+    await wait(kill?.5:.25);}
   if(FK_PATH&&p.mesh.position.distanceTo(home)>.01){   /* 2撃目を見届けてから自分のマスへ帰る */
     const bk=p.mesh.position.clone(),hop2=p.t==='N';
     frameTwo(bk,home);await wait(.3);
