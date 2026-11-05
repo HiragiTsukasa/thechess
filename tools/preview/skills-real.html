@@ -32,6 +32,15 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
   <span class="grp"><span>遠距離カメラ</span>
     <button type="button" data-ok="0">追従</button><button type="button" data-ok="1">肩越し即</button>
     <button type="button" data-ok="2">途中</button><button type="button" data-ok="3">真横</button></span>
+  <span class="grp"><span>肩越し 振り角</span>
+    <button type="button" data-ang="25">25°</button><button type="button" data-ang="45">45°</button>
+    <button type="button" data-ang="60">60°</button><button type="button" data-ang="80">80°</button></span>
+  <span class="grp"><span>高さ</span>
+    <button type="button" data-shy="0.45">低</button><button type="button" data-shy="1">中</button>
+    <button type="button" data-shy="2.1">高</button></span>
+  <span class="grp"><span>引き</span>
+    <button type="button" data-shr="0.75">寄り</button><button type="button" data-shr="1">標準</button>
+    <button type="button" data-shr="1.5">引き</button></span>
   <span id="msg">読み込み中…</span>
 </div>
 <script>
@@ -58,7 +67,7 @@ document.getElementById('bE').addEventListener('click',()=>load(POS_E,
   'h1クイーンをタップ→a8をタップ→もう一度タップで発動。右のカメラ切替で見え方を比べられる。'));
 /* 切替スイッチ。盤面を置き直さずにその場で効く */
 function seg(attr,fn){const bs=[...document.querySelectorAll('#bar button['+attr+']')];
-  const paint=v=>bs.forEach(b=>b.classList.toggle('on',+b.getAttribute(attr)===v));
+  const paint=v=>bs.forEach(b=>b.classList.toggle('on',Math.abs(+b.getAttribute(attr)-v)<1e-6));
   bs.forEach(b=>b.addEventListener('click',()=>{const v=+b.getAttribute(attr);
     if(!G){msg.textContent='読み込み中…';return;}fn(v);paint(v);}));
   return paint;}
@@ -67,6 +76,10 @@ const paintFk=seg('data-fk',v=>{G.fkSet(v);
 const paintOk=seg('data-ok',v=>{G.okCamSet(v,3.4);
   msg.textContent=['遠距離も追従カメラのまま。','点火した瞬間に相手の肩越しへ切り替える。',
     '少し追ってから、飛行の途中で相手の肩越しへ。','真横から引いて、飛んでいく全体を見せる。'][v];});
+const paintAng=seg('data-ang',v=>{G.shSet(v,null,null);msg.textContent='肩越しの振り角 '+v+'°。射線の真後ろが0°、真横が90°。';});
+const paintShy=seg('data-shy',v=>{G.shSet(null,v,null);msg.textContent='肩越しの高さ '+v+'。';});
+const paintShr=seg('data-shr',v=>{G.shSet(null,null,v);msg.textContent='肩越しの引き ×'+v+'。';});
 waitG(()=>{load(POS_D,'d5クイーンをタップ→Forkを選ぶ→狙える5体から2体を決めて発動。');
-  try{paintFk(G.fk());paintOk(G.okCam()[0]);}catch(e){}});
+  try{paintFk(G.fk());paintOk(G.okCam()[0]);
+    const sh=G.sh();paintAng(sh[0]);paintShy(sh[1]);paintShr(sh[2]);}catch(e){}});
 </script>
