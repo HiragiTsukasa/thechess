@@ -6172,12 +6172,12 @@ async function rkStart(){
  if(m){                                          /* 対人で開始。接続は mmSearch の中で張ってある */
   ranked=true;resigned=false;payFree=0;
   ON.mode='rm';ON.code=RM.code;ON.side=m.host?'w':'b';ON.moves=[];ON.applied=0;
-  ON.opName=op.name;ON.opRate=or_;
+  ON.opName=op.name;ON.opRate=op.rate;   /* or_ は検索処理の内側の変数。ここからは見えない */
   netStart();
   beginOnline({code:RM.code,moves:[],status:'playing'});
   return;
  }
- ON.opName=op.name;ON.opRate=or_;cpuLevel=rkCpuLevel();start('cpu');}
+ ON.opName=op.name;ON.opRate=op.rate;cpuLevel=rkCpuLevel();start('cpu');}
 
 /* 人が見つからなかったときの相手。階級が上がるほど強くする
    （ずっと『ふつう』だと、上に行くほど楽になってしまう） */
