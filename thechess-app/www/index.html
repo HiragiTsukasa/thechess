@@ -3786,7 +3786,8 @@ let dlyMark=0;
 function dlyPaint(){const e=$('dlyCnt');if(!e)return;
   const on=ranked&&dlyN>0&&!over&&!vsOn&&mode!=='puzzle'&&$('title').classList.contains('hide');
   e.classList.toggle('on',on);
-  if(on)e.textContent=TRF("遅延 {0}回  -{1}",dlyN,dlyPenalty(dlyN));}
+  if(on){const pen=dlyPenalty(dlyN);
+    e.textContent=pen>0?TRF("遅延 {0}回  -{1}",dlyN,pen):TRF("遅延 {0}回",dlyN);}}
 /* ── 音の復帰 ───────────────────────────────────────────
    iOS はアプリを離れると AudioContext を止める。WebView の中には
    AVAudioSession を取り直す主がいないので、戻ってきても誰も起こさない。
