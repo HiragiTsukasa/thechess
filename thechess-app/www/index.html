@@ -6555,19 +6555,16 @@ function ensure(){if(cv)return;
  cv=document.createElement('canvas');cv.id='vsCv';
  cv.style.cssText='position:fixed;inset:0;z-index:26;display:none;touch-action:none';
  document.body.appendChild(cv);g=cv.getContext('2d');
- /* 探索中は『キャンセル』の枠を押した時だけ取り消す。
-    どこを触っても消えると、待っているあいだ画面に触れなくなる。
+ /* 画面を触っても演出は飛ばさない。飛ばせるのは自分の端末だけなので、
+    対人だと片方が先に盤へ入り、もう片方はまだ演出を見ている状態になる。
+    取り消せるのは探索中の『キャンセル』の枠だけ。
     枠は drSearch が W*.5-70, H*.82, 140x42 に描いている */
  cv.addEventListener('pointerdown',e=>{if(!act)return;
   const t=(performance.now()-act.t0)/1000;
-  const searching=act.full&&t<T_SEARCH+T_TR;
-  if(searching){
-    const r=cv.getBoundingClientRect();
-    const x=(e.clientX-r.left)*(W/r.width),y=(e.clientY-r.top)*(H/r.height);
-    const hit=x>=W*.5-70-14&&x<=W*.5+70+14&&y>=H*.82-14&&y<=H*.82+42+14;
-    if(hit)stop('cancel');
-    return;}
-  stop('skip');});
+  if(!(act.full&&t<T_SEARCH+T_TR))return;        /* 相手が決まった後は何もしない */
+  const r=cv.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(W/r.width),y=(e.clientY-r.top)*(H/r.height);
+  if(x>=W*.5-70-14&&x<=W*.5+70+14&&y>=H*.82-14&&y<=H*.82+42+14)stop('cancel');});
  window.addEventListener('resize',()=>{if(act)fit();});}
 const FLY_MS=560;
 function fly(src){                       /* ランクパネルのエンブレムを探索の中心へ飛ばす */
