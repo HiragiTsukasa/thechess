@@ -1,0 +1,51 @@
+<title>技の吹き出し 実機</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root{--bg:#07080a;--ink:#e9eaec;--sub:#9aa0a6;--line:#23262b;color-scheme:dark}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
+ font:13px/1.5 -apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
+ -webkit-tap-highlight-color:transparent}
+#stage{position:fixed;left:0;right:0;top:0;bottom:var(--bar,52px);
+ border:0;width:100%;height:calc(100% - var(--bar,52px));background:var(--bg);display:block}
+#bar{position:fixed;left:0;right:0;bottom:0;height:var(--bar,52px);
+ display:flex;align-items:center;gap:8px;
+ padding:0 max(12px,env(safe-area-inset-left,0px)) env(safe-area-inset-bottom,0px) max(12px,env(safe-area-inset-right,0px));
+ box-sizing:content-box;background:#0d0f12;border-top:1px solid var(--line)}
+#bar button{flex:0 0 auto;border:1px solid var(--line);background:#15181c;color:var(--ink);
+ border-radius:999px;padding:7px 13px;font:inherit;font-size:12px;cursor:pointer}
+#bar button:active{background:#1e2228}
+#msg{flex:1 1 auto;min-width:0;color:var(--sub);font-size:11px;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+<iframe id="stage" src="game.html" allow="autoplay; fullscreen" title="The Chess: Groundbreaking"></iframe>
+<div id="bar">
+  <button type="button" id="bA">ルーク盤面</button>
+  <button type="button" id="bB">王と僧侶</button>
+  <span id="msg">読み込み中…</span>
+</div>
+<script>
+try{localStorage.setItem('nc_tut1','1');localStorage.setItem('nc_tut2','1');}catch(e){}
+const W=(t,s)=>['w',t,s], B=(t,s)=>['b',t,s];
+/* ルークが Laser も Fork も成立。ポーンとクイーンは Fork がグレーになる */
+const POS_A=[W('K','g1'),W('R','e5'),W('N','c3'),W('Q','d1'),W('P','a2'),W('P','b2'),W('P','g2'),W('P','h2'),
+  B('K','g8'),B('N','e8'),B('R','a5'),B('B','f6'),B('P','g7'),B('P','h7'),B('P','c7')];
+/* ビショップの Sanctuary とキングの Homecoming が成立。ルークは Laser がグレー */
+const POS_B=[W('K','e1'),W('B','d4'),W('R','h3'),['w','N','f3',{hp:220}],
+  W('P','c2'),W('P','e2'),W('P','g2'),
+  B('K','g8'),B('Q','d8'),B('R','a8'),B('B','c8'),B('N','b4'),B('P','a7'),B('P','b7'),B('P','g7')];
+const msg=document.getElementById('msg');
+let G=null;
+function waitG(cb){const f=document.getElementById('stage');let n=0;
+  const t=setInterval(()=>{let g=null;
+    try{g=f.contentWindow&&f.contentWindow.__G;}catch(e){}
+    if(g&&g.setPos){clearInterval(t);G=g;cb(g);}
+    else if(++n>400){clearInterval(t);msg.textContent='ゲームの読み込みに失敗した。再読み込みしてみて。';}},150);}
+function load(pos,label){if(!G){msg.textContent='読み込み中…';return;}
+  try{G.setPos(pos,'w');msg.textContent=label;}catch(e){msg.textContent='盤面を置けなかった：'+e.message;}}
+document.getElementById('bA').addEventListener('click',()=>load(POS_A,
+  'e5ルーク＝Laser＋Fork。g2ポーンとd1クイーンはグレー。'));
+document.getElementById('bB').addEventListener('click',()=>load(POS_B,
+  'd4ビショップ＝Sanctuary。e1キング＝Homecoming。h3ルークはLaserがグレー。'));
+waitG(()=>{load(POS_A,'駒を1タップで移動、もう一度タップで技が出る。');});
+</script>
