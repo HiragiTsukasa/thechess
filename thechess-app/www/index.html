@@ -2819,7 +2819,7 @@ const OKS={
    OK_DIVE_Y … 上から落とすとき、この高さまで降りた時点 */
 let OK_PIERCE=1.2,OK_DIVE_Y=1.55;
 let FK_PATH=1;      /* 0=毎回自分のマスへ戻る  1=三角形の経路 */
-let OK_CAM=2,OK_FAR=3.4;
+let OK_CAM=1,OK_FAR=3.4;
 let OK_SH_ANG=25,OK_SH_Y=.45,OK_SH_R=1.0;  /* 肩越しの振り角・高さ・引き */  /* 長距離オーバーキルのカメラ。0=追従 1=肩越し即 2=途中で肩越し 3=横からのパン */
 function overkillBoom(tp,y){OKS.impact();hitSlow(.8,.55);CAM.shake=1.7;CAM.fovKick=14;const fl=$('sdFlash');if(fl){fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');}
   fireball(tp.clone().setY(y),1.5);for(let i=0;i<3;i++)setTimeout(()=>shock(tp.clone().setY(i?.04:y),2.4+i*1.5,i?0xff4a3a:0xffb040),i*80);showTech('Overkill','');}
@@ -2873,11 +2873,17 @@ async function missile(p,t,ev){const tp=t.mesh.position.clone(),sp=p.mesh.positi
   /* 1 は構え・点火から相手側で見る。2・3 は飛び出しまで追ってから回り込む。
      どちらも切り替えではなく、カメラが移動して繋ぐ */
   const early=far&&OK_CAM!==2;
-  CAM.shot=early?cut:chase(sp);
-  if(far){CAM.pos.copy(CAM.shot.pos);CAM.look.copy(CAM.shot.look);}  /* 間を置かずその画から始める */
-  await wait(far?.18:.6);
+  const rig=early?cut:chase(sp);
+  /* 駒を選んだ時の俯瞰から切り替えず、カメラ自身が肩越しの位置まで飛ぶ。
+     移動は駒が垂直から水平へ倒れる間に済ませ、飛び出す頃には構えが決まっている */
+  const p0=CAM.pos.clone(),l0=CAM.look.clone();
+  if(far)CAM.shot={pos:p0.clone(),look:l0.clone()};else CAM.shot=rig;
+  await wait(far?.08:.6);
   const q0=p.mesh.quaternion.clone(),q1=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir);const hh=.45;const back=sp.clone().addScaledVector(dir,-.55).setY(hh);
-  OKS.tilt();await tween(far?.26:.35,k=>{p.mesh.quaternion.copy(q0).slerp(q1,eIO(k));p.mesh.position.lerpVectors(sp,back,eIO(k));if(early)CAM.shot=cut;});
+  OKS.tilt();await tween(far?.52:.35,k=>{p.mesh.quaternion.copy(q0).slerp(q1,eIO(k));p.mesh.position.lerpVectors(sp,back,eIO(k));
+    if(far){const e=eIO(k),q={pos:p0.clone().lerp(rig.pos,e),look:l0.clone().lerp(rig.look,e)};
+      CAM.shot=q;CAM.pos.copy(q.pos);CAM.look.copy(q.look);}});
+  if(far){CAM.shot=rig;CAM.pos.copy(rig.pos);CAM.look.copy(rig.look);}
   OKS.ignite();for(let i=0;i<10;i++)setTimeout(()=>burst(back.clone().addScaledVector(dir,-.2),3,dustMat,.8,.6,.6,1.8),i*30);
   await tween(far?.18:.3,k=>{p.mesh.position.copy(back).addScaledVector(sd,Math.sin(k*60)*.02);if(early)CAM.shot=cut;});
   OKS.fly(.2+L*.05);let tr=0;const end=tp.clone().addScaledVector(dir,-.3).setY(hh);
