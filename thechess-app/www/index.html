@@ -1540,19 +1540,19 @@ addEventListener('DOMContentLoaded',()=>TRdom());
 /* 技の吹き出し：駒を選ぶと、その駒の技が線でつながって並ぶ */
 #skCall{position:fixed;inset:0;z-index:9;pointer-events:none}
 #skCall>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-#skCall b{position:absolute;white-space:nowrap;display:block;
+#skCall b{position:absolute;left:0;top:0;white-space:nowrap;display:block;
  padding:5px 10px 6px;border-radius:13px;border:1px solid;background:rgba(9,11,14,.88);
- font-weight:400;line-height:1;transform-origin:center;
- transform:translateY(-50%) scale(var(--s,1));opacity:var(--o,1);
- transition:transform .22s cubic-bezier(.2,.9,.3,1.3),opacity .22s ease,
-  background .14s ease,box-shadow .22s ease,border-color .22s ease}
-#skCall>svg path{transition:stroke-width .2s ease,opacity .22s ease}
+ font-weight:400;line-height:1;transform-origin:center;will-change:transform;
+ box-shadow:0 10px 18px -12px #000,0 2px 6px -4px #000;
+ touch-action:none;pointer-events:auto;cursor:grab;
+ transition:background .14s ease,box-shadow .22s ease,border-color .22s ease}
+#skCall b:active{cursor:grabbing}
+#skCall>svg path{transition:stroke-width .2s ease}
 #skCall b u{display:block;text-decoration:none;font-family:"IBM Plex Mono",ui-monospace,monospace;
  font-weight:600;font-size:12px;letter-spacing:.03em}
 #skCall b small{display:block;margin-top:3px;font-size:9.5px;color:#9aa0a6;letter-spacing:.02em}
 #skCall b.off{background:rgba(9,11,14,.62);padding:5px 10px}
 #skCall b.off small{display:none}
-#skCall b.act{pointer-events:auto;cursor:pointer}
 #skCall b.act::after{content:"";position:absolute;inset:-8px;border-radius:20px}
 #skCall b.sel{background:rgba(26,30,36,.96);box-shadow:0 0 0 1px currentColor,0 0 18px -5px currentColor}
 </style>
@@ -4397,47 +4397,57 @@ const SKNOTE={Laser:TR('動かずに直線上を撃つ'),Sanctuary:TR('近くの
 const skListOf=p=>(SKP[p.t]||[]).concat(forkMove(p)?['Fork']:[]);
 const SKNS='http://www.w3.org/2000/svg';
 const skCall=document.createElement('div');skCall.id='skCall';
-skCall.innerHTML='<svg><path id="skStem" fill="none" stroke="#cfd4da" stroke-width="1.2" opacity="0"></path>'
- +'<circle id="skDot" r="3" fill="#efe9dc" opacity="0"></circle><g id="skLn"></g></svg>';
+skCall.innerHTML='<svg>'
+ +'<path id="skStemG" fill="none" stroke="#dfe3e8" stroke-width="7" stroke-linecap="round" opacity="0"></path>'
+ +'<path id="skStem" fill="none" stroke="#f2f4f6" stroke-width="2.8" stroke-linecap="round" opacity="0"></path>'
+ +'<circle id="skDot" r="4.5" fill="#f4f6f8" opacity="0"></circle><g id="skLn"></g></svg>';
 document.body.appendChild(skCall);
-let skP=null,skItems=[],skTm=[],skSide=null;
-function skHide(){skTm.forEach(clearTimeout);skTm=[];skSide=null;
+let skP=null,skItems=[],skTm=[],skSide=null,skOff={x:0,y:0},skDrag=null,skT0=0,skMovedAt=-9999;
+function skHide(){skTm.forEach(clearTimeout);skTm=[];skSide=null;skDrag=null;skOff={x:0,y:0};
   if(!skP&&!skItems.length)return;skP=null;skItems=[];
   [...skCall.querySelectorAll('b')].forEach(b=>b.remove());
   const g=$('skLn');if(g)g.innerHTML='';
-  $('skStem').style.opacity='0';$('skDot').style.opacity='0';}
+  $('skStem').style.opacity='0';$('skStemG').style.opacity='0';$('skDot').style.opacity='0';}
 /* 2タップ目。その駒の技をぜんぶ出す */
 function skOpen(p){skHide();skP=p;const names=skListOf(p);const on=new Set(modesOf(p));
   const g=$('skLn');
-  skItems=names.map(n=>{const ok=on.has(n);
+  skItems=names.map((n,i)=>{const ok=on.has(n);
     const b=document.createElement('b');b.className=ok?'act':'off';
     b.style.borderColor=ok?SKHUE[n]+'99':'rgba(255,255,255,.14)';
     b.style.color=ok?SKHUE[n]:'#a6abb1';
     b.innerHTML='<u></u><small></small>';
     b.firstChild.textContent=n;b.lastChild.textContent=SKNOTE[n]||'';
-    b.style.setProperty('--s','.78');b.style.setProperty('--o','0');
     if(uiSkill===n)b.classList.add('sel');
-    b.addEventListener('pointerdown',e=>e.stopPropagation());
-    b.addEventListener('click',e=>{e.stopPropagation();if(ok)skPick(n);});
+    skDragBind(b);
+    b.addEventListener('click',e=>{e.stopPropagation();
+      if(performance.now()-skMovedAt<260)return;   /* 押しのけただけ。技は選ばない */
+      if(ok)skPick(n);});
     skCall.appendChild(b);
     const ln=document.createElementNS(SKNS,'path');ln.setAttribute('fill','none');
-    ln.setAttribute('stroke',ok?SKHUE[n]:'rgba(255,255,255,.2)');
-    ln.setAttribute('stroke-width',ok?'1.5':'1');ln.style.opacity='0';g.appendChild(ln);
-    return {n,ok,b,ln};});
-  skFrame();
-  $('skStem').style.opacity='.5';$('skDot').style.opacity='.85';
-  /* 駒に近い札から順に立ち上げる */
-  skItems.forEach((it,i)=>skTm.push(setTimeout(()=>{
-    it.b.style.setProperty('--o','1');it.b.style.setProperty('--s',uiSkill===it.n?'1.07':'1');
-    it.ln.style.opacity=it.ok?(uiSkill===it.n?'1':'.5'):'.4';},40+i*60)));}
+    ln.setAttribute('stroke',ok?SKHUE[n]:'rgba(255,255,255,.22)');ln.setAttribute('stroke-linecap','round');
+    ln.setAttribute('stroke-width',ok?'2':'1.4');ln.style.opacity='0';g.appendChild(ln);
+    /* cx,cy は今いる場所。最初は駒元に置いて、そこから目的地へ伸びていく */
+    return {n,ok,b,ln,cx:null,cy:null,s:.72,o:0,st:.72,bob:Math.random()*6.28,born:performance.now()+i*70};});
+  skT0=performance.now();skFrame();}
 function skMark(){for(const it of skItems){const on=uiSkill===it.n;
   it.b.classList.toggle('sel',on);
-  it.ln.setAttribute('stroke-width',on?'2.2':it.ok?'1.5':'1');
-  it.ln.style.opacity=on?'1':(it.ok?'.5':'.4');
+  it.ln.setAttribute('stroke-width',on?'3':it.ok?'2':'1.4');
   if(on){ /* 選ばれた札は一度ふくらんでから落ち着く */
-    it.b.style.setProperty('--s','1.18');
-    skTm.push(setTimeout(()=>it.b.style.setProperty('--s','1.07'),150));}
-  else it.b.style.setProperty('--s','1');}}
+    it.st=1.2;skTm.push(setTimeout(()=>{it.st=1.07;},160));}
+  else it.st=1;}}
+/* 吹き出しは指で押しのけられる。ふわっと付いてくる */
+function skDragBind(b){
+  b.addEventListener('pointerdown',e=>{e.stopPropagation();
+    skDrag={id:e.pointerId,x:e.clientX,y:e.clientY,ox:skOff.x,oy:skOff.y,moved:false};
+    try{b.setPointerCapture(e.pointerId);}catch(x){}});
+  b.addEventListener('pointermove',e=>{if(!skDrag||skDrag.id!==e.pointerId)return;
+    const dx=e.clientX-skDrag.x,dy=e.clientY-skDrag.y;
+    if(!skDrag.moved&&Math.hypot(dx,dy)<6)return;
+    skDrag.moved=true;skOff={x:skDrag.ox+dx,y:skDrag.oy+dy};});
+  const end=e=>{if(!skDrag||skDrag.id!==e.pointerId)return;
+    if(skDrag.moved)skMovedAt=performance.now();
+    skDrag=null;};
+  b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);}
 function skPick(n,cycled){const p=skP||sel;if(!p||busy||!humanTurn())return;
   if(!cycled&&uiSkill===n)n=null;
   uiReset(true);uiSkill=n;const c=n?SKCOLOR[n]:0xc9a45c;
@@ -4462,14 +4472,16 @@ function forkTap(sq){const hit=uiCands.find(x=>x.f===sq.f&&x.r===sq.r);if(!hit)r
     fkSel.splice(i,1);SFX.tap&&SFX.tap();forkPaint();return true;}
   if(fkSel.length>=2)fkSel.shift();      /* 3体目を指したら古い方と差し替える */
   fkSel.push(hit);SFX.tap&&SFX.tap();forkPaint();return true;}
-function skFrame(){if(!skP)return;if(!skP.alive||sel!==skP){skHide();return;}
+function skFrame(now){if(!skP)return;if(!skP.alive||sel!==skP){skHide();return;}
   if(!skItems.length)return;
+  now=now||performance.now();
   const a=scrPos(skP.f,skP.r,skP.t==='P'?.95:skP.t==='K'?1.4:1.15);
-  const W=innerWidth,H=innerHeight,PAD=8;
+  const W=innerWidth,H=innerHeight,PAD=10;
   /* 札の高さはまちまち（撃てない技は1行）。実寸を測って積む */
   const hs=skItems.map(it=>it.b.offsetHeight||26);
+  const ws=skItems.map(it=>it.b.offsetWidth||110);
   const tot=hs.reduce((x,y)=>x+y,0)+PAD*(hs.length-1);
-  const wide=Math.max(...skItems.map(it=>it.b.offsetWidth||110));
+  const wide=Math.max(...ws);
   const lo=72+tot/2,hi=H-96-tot/2;
   const clamp=v=>lo<hi?Math.max(lo,Math.min(hi,v)):(lo+hi)/2;
   /* 技の的と札が重ならない置き場所を探す。光っているマスを避ける */
@@ -4488,19 +4500,36 @@ function skFrame(){if(!skP)return;if(!skP.alive||sel!==skP){skHide();return;}
       if(!b2)break;}
     right=best.right;mid=best.mid;}
   skSide=right;
-  const colX=colOf(right);
+  const colX=colOf(right)+skOff.x,midY=mid+skOff.y;
   const hubX=right?a.x+30:a.x-30;
-  $('skStem').setAttribute('d','M'+a.x.toFixed(1)+' '+a.y.toFixed(1)+'L'+hubX.toFixed(1)+' '+a.y.toFixed(1));
+  const ease=.19;                               /* 位置も大きさも追いかけるだけ。瞬間移動させない */
+  let y=midY-tot/2,shown=0;
+  skItems.forEach((it,i)=>{
+    const born=now>=it.born;
+    const tcy=y+hs[i]/2, tcx=right?colX:colX-ws[i];
+    /* ふわふわ：札ごとに位相をずらして上下に揺らす */
+    const fy=Math.sin(now/900+it.bob)*3.2, fx=Math.sin(now/1500+it.bob*1.7)*1.8;
+    if(it.cx==null){it.cx=hubX;it.cy=a.y;}
+    const gx=born?tcx+fx:hubX-(right?0:ws[i]), gy=born?tcy+fy:a.y;
+    it.cx+=(gx-it.cx)*ease; it.cy+=(gy-it.cy)*ease;
+    it.s+=((born?it.st:.72)-it.s)*ease;
+    it.o+=((born?1:0)-it.o)*ease;
+    it.b.style.transform='translate('+it.cx.toFixed(1)+'px,'+(it.cy-hs[i]/2).toFixed(1)+'px) scale('+it.s.toFixed(3)+')';
+    it.b.style.opacity=it.o.toFixed(3);
+    const on=uiSkill===it.n;
+    it.ln.style.opacity=(it.o*(on?1:it.ok?.6:.45)).toFixed(3);
+    const ex=right?it.cx:it.cx+ws[i], ey=it.cy;
+    const bend=right?ex-14:ex+14;
+    it.ln.setAttribute('d','M'+hubX.toFixed(1)+' '+a.y.toFixed(1)+'L'+bend.toFixed(1)+' '+ey.toFixed(1)
+      +'L'+ex.toFixed(1)+' '+ey.toFixed(1));
+    if(born)shown=Math.max(shown,it.o);
+    y+=hs[i]+PAD;});
+  const d='M'+a.x.toFixed(1)+' '+a.y.toFixed(1)+'L'+hubX.toFixed(1)+' '+a.y.toFixed(1);
+  $('skStem').setAttribute('d',d);$('skStemG').setAttribute('d',d);
+  $('skStem').style.opacity=(shown*.9).toFixed(3);
+  $('skStemG').style.opacity=(shown*.14).toFixed(3);
   $('skDot').setAttribute('cx',a.x.toFixed(1));$('skDot').setAttribute('cy',a.y.toFixed(1));
-  let y=mid-tot/2;
-  skItems.forEach((it,i)=>{const cy=y+hs[i]/2,ex=right?colX-11:colX+11;
-    it.b.style.top=cy+'px';
-    if(right){it.b.style.left=colX+'px';it.b.style.right='auto';}
-    else{it.b.style.right=(W-colX)+'px';it.b.style.left='auto';}
-    it.ln.setAttribute('d','M'+hubX.toFixed(1)+' '+a.y.toFixed(1)+'L'+ex.toFixed(1)+' '+cy.toFixed(1)
-      +'L'+colX.toFixed(1)+' '+cy.toFixed(1));
-    y+=hs[i]+PAD;});}
-
+  $('skDot').style.opacity=(shown*.95).toFixed(3);}
 function uiTap(sq){
   if(!humanTurn()||!sq){uiReset();return;}
   const p=at(sq.f,sq.r);
@@ -4626,7 +4655,7 @@ function loop(now){requestAnimationFrame(loop);frameN++;const rdt=Math.min((now-
   if(!busy)ff=1;
   updateSlow(rdt);const dt=rdt*timeScale;
   for(let i=tweens.length-1;i>=0;i--){const w=tweens[i];w.t+=dt;const k=Math.min(1,w.t/w.d);w.fn(w.ease(k),dt);if(k>=1){tweens.splice(i,1);w.res();}}
-  updateParts(dt);updateRings(dt);updatePops(rdt);updateRoulettes(rdt);updateCam(rdt);updateAuras(now);uiFrame(now,rdt);skFrame();updateBare(now,rdt);updateSD(now);bgmTick(now);shotFrame(now);
+  updateParts(dt);updateRings(dt);updatePops(rdt);updateRoulettes(rdt);updateCam(rdt);updateAuras(now);uiFrame(now,rdt);skFrame(now);updateBare(now,rdt);updateSD(now);bgmTick(now);shotFrame(now);
   markers.children.forEach(m=>{if(m.userData.spin)m.rotation.z+=rdt*1.5;});
   ring.material.opacity=.7+Math.sin(now/250)*.25;
   renderer.render(scene,camera);}
