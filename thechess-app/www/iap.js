@@ -48,7 +48,7 @@
     store.initialize([P.Platform.APPLE_APPSTORE]);
 
     window.__IAP={
-      restore:function(){ store.restorePurchases(); },
+      restore:function(){ return store.restorePurchases(); },
       /* ストアが返す現地表記の価格（"¥300" / "$6.99" / "€5,99"）。
          国ごとに値段も通貨も違うので、画面に焼き込んではいけない。
          商品の取得は非同期なので、読めていなければ空を返す */
