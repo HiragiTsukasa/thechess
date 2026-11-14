@@ -3883,7 +3883,7 @@ setTimeout(audioWake,0);                      /* 許されていれば最初の�
    公開後に置けばそこから動き出す（あとから部品を足すと審査が1回要るため）。
    ストア更新が入ったら resetWhenUpdate でライブ版は捨てられ、素の版に戻る。 */
 const APP_VER='1.0.0';
-const WWW_VER='2026.11.13';     /* www を触ったら上げる。ストア版と中身の対応を見るため */
+const WWW_VER='2026.11.14';     /* www を触ったら上げる。ストア版と中身の対応を見るため */
 /* メニューに出す版。Capacitor から取れるならストアの版も足す */
 let nativeVer='';
 (async()=>{try{const A=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App;
@@ -3922,11 +3922,17 @@ async function liveInit(){
   const j=await r.json();
   if(!j||!j.version||!j.url){liveSt('live: bad-json');return;}
   if(!verNewer(j.version,APP_VER)){liveSt('live: latest '+APP_VER);return;}
-  /* checksum はプラグイン側で必須。無いまま download を呼ぶと必ず弾かれるので、
-     ここで止めて理由を残す（これが抜けていて一度も届かなかった前例がある） */
-  if(!j.checksum){liveSt('live: no-sum '+j.version);return;}
+  /* manifest 方式：ファイルごとに ビルトイン→キャッシュ→取得 の順で解決される。
+     変わっていないものは落とさないので軽く、mp3 は端末の中のものがそのまま使われる。
+     このときプラグインは bundle 全体の checksum を要求しない。
+     zip 方式（予備）のときは checksum が必須で、無いまま download を呼ぶと
+     必ず弾かれるので、ここで止めて理由を残す */
+  const man=(Array.isArray(j.manifest)&&j.manifest.length)?j.manifest:null;
+  if(!man&&!j.checksum){liveSt('live: no-sum '+j.version);return;}
   liveSt('live: get '+j.version);
-  const b=await P.download({url:j.url,version:j.version,checksum:j.checksum});
+  const o={url:j.url,version:j.version};
+  if(man)o.manifest=man;else o.checksum=j.checksum;
+  const b=await P.download(o);
   if(!b||!b.id){liveSt('live: no-bundle '+j.version);return;}
   await P.next({id:b.id});                  /* 次の起動から使う。対局中に入れ替えない */
   liveSt('live: next '+j.version);

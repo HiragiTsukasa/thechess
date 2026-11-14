@@ -28,7 +28,7 @@ CUBE と違うところには【チェス】を付けた。**そこを CUBE の�
 `ios/Sources/CapacitorUpdaterPlugin/CapgoSemanticVersion.swift` が
 3要素でなければ `ParseError.invalidComponents` を投げる。4つ区切りも頭0も不可。
 
-### (2) `latest.json` に zip の sha256 を書き、`download()` へ渡す
+### (2) ハッシュを渡す（zip 方式のとき zip の sha256、manifest 方式はファイルごと）
 
 `CapgoUpdater.swift` の `resolveExpectedBundleChecksum()`：
 
@@ -41,6 +41,11 @@ if checksum.isEmpty {
 
 **空だと必ず弾かれる。** 値は `CryptoCipher.calcChecksumOrThrow()` が
 `SHA256` を `String(format:"%02x")` で繋いだもの＝**zip 全体の sha256・小文字16進**。
+
+★**manifest 方式ではこの checksum は要らない。**`downloadBundle` が
+`if manifestEntries == nil && checksum.isEmpty` で初めて弾くので、manifest があれば通る。
+代わりに**ファイルごとの `file_hash`（sha256・小文字16進64桁）**で照合される。
+ただし `url` は**形式として必須**（manifest 時は使われないが、無いと reject される）。
 
 ### (3) 置き場に `Access-Control-Allow-Origin: *`
 
@@ -163,9 +168,12 @@ cd firebase && firebase deploy --only hosting
 
 1. `APP_VER` を読む → **SemVer でなければ止める**
 2. 置いてある版より新しくなければ**止める**
-3. `www/` を**全部**まとめて zip（中身が同じなら毎回同じ zip になる）
-4. zip の sha256 を計算
-5. `latest.json` に `{version,url,checksum}` を書く
+3. mp3 が**端末のビルトインと同じか**を確かめる（違えば止める）
+4. mp3 以外を `live/<版>/` へ置き、ファイルごとに sha256 を計算
+5. `latest.json` に `{version, url, manifest:[{file_name,file_hash,download_url}]}` を書く
+   （mp3 の `download_url` は `null`＝端末の中のものを使う）
+
+予備の zip 方式は `--zip`。その場合は `{version,url,checksum}` になる。
 
 ★**審査中は出さない。** 提出した版も起動のたび `latest.json` を見るので、
 **審査する人の端末にも降りる。**
@@ -177,7 +185,9 @@ cd firebase && firebase deploy --only hosting
 
 ---
 
-## 6. 【チェス】zip は全部入りにするしかない
+## 6. 【チェス】manifest 方式を使う（mp3 を公開ウェブに置かないため）
+
+### zip 方式の行き止まり
 
 プラグインは落とした zip を**新しい web ルートそのもの**にする。
 `CapacitorUpdaterPlugin.swift` が `bridge.setServerBasePath(dest.path)` を呼ぶだけで、
@@ -187,27 +197,60 @@ CUBE は単一HTMLなので `index.html` 1枚で足りたが、チェスは `iap
 `fonts/`・`bgm/` を持つ。**index.html だけを zip にすると、更新した瞬間に
 3D と課金と字と曲が全部死ぬ。**（CUBE 側の仕様書では「未実測」だったが、実装で確定した）
 
-zip のルートに `index.html` が要る（`definitions.d.ts`：
-"The bundle must include an `index.html` file at the root level."）。
+つまり zip 方式だと毎回 `www` 全部＝**BGM の mp3 4本・6.5MB が公開ウェブに乗る**。
+素の mp3 は OpenTracks の禁止事項（配布／コンバートせず容易にアクセスできる状態）を踏む。
+CUBE で一度やって公開から外した。**zip 方式のままでは出せない。**
 
-### ★BGM の mp3 が未解決
+### manifest 方式なら mp3 を配らずに済む
 
-`www/bgm/*.mp3` が4本・6.5MB。zip は **URL を知れば誰でも取れる公開ウェブ**に置かれるので、
-素の mp3 を入れると OpenTracks の禁止事項（配布／コンバートせず容易にアクセスできる状態）を踏む。
-CUBE で一度やって公開から外した。
+`downloadManifest` はファイルごとに
 
-`build.py` は **mp3 を見つけたら書き出しを止める**。先に決めること：
+```
+ビルトイン（アプリに同梱された元の www）→ キャッシュ → ダウンロード
+```
 
-1. mp3 を `index.html` に埋め込む形に変える（zip の大きさは変わらない。base64 は zip で元に戻る）
-2. CC0 など、ウェブ配置を許す曲に差し替える
-3. 権利者に確認が取れている → `--with-mp3` を付ける
+の順で解決する（`CapgoUpdater.swift`）：
 
-★**「zip から外す」は選べない。** 上のとおり web ルートごと差し替わるので曲が 404 になる。
+```swift
+// Try builtin first
+if self.builtinFileMatches(task.builtinFilePath, expectedHash: task.finalFileHash) {
+    try self.copyItemReplacing(from: task.builtinFilePath, to: task.destFilePath)
+}
+// Try cache
+else if ... tryCopyFromCache ...
+// Download
+else { try self.downloadManifestFile(...) }
+```
 
-★**この決着が付くまで、ライブ更新は出せない。** 部品と経路は通っているが、
-最初の1回を出した時点で mp3 が公開ウェブに乗る。
+**ビルトインとハッシュが一致するファイルは `download_url` を見に行かない。**
+だから mp3 は `download_url: null` で出せて、**公開ウェブには一切置かれない**。
+ついでに、変わっていないファイルは毎回落とさないので更新が軽くなる
+（実測：15本のうち**配るのは11本・2.4MB**。zip 方式なら 8.0MB）。
 
----
+照合に使われるのは `ios/App/App/public/ota-builtin-hashes.json`
+（`npx cap sync ios` のときプラグインのフックが作る）。中身は
+`{files:{"bgm/home.mp3":{sha256,size},…}}` で、**こちらが計算する sha256 と同じもの**。
+
+### 守らないといけない1つのこと
+
+★**mp3 を差し替えたら、ライブでは配れない。ストアの更新にする。**
+
+端末は自分の中の mp3 を使うので、こちらが曲を変えても届かない。
+`tools/live/build.py` は **mp3 の sha256 がビルトイン表と違えば書き出しを止める**：
+
+```
+✗ 端末のビルトインと中身が違うファイルがある:
+    bgm/home.mp3
+  … ストアの更新として出すこと
+```
+
+曲を変えるのは、どのみち素材の権利の話が絡むのでストア更新でよい。
+
+### 予備の zip 方式
+
+manifest 方式が実機で通らなかったときのために `--zip` を残してある。
+ただし **mp3 が公開ウェブに乗る**ので、`--with-mp3` を明示しないと止まる。
+使うなら曲の扱いを先に決めること。
 
 ## 7. 実機を覗くとき
 
@@ -235,13 +278,21 @@ Capacitor はデバッグビルドでしか立てない）。`npx cap open ios` 
 
 - プラグイン 8.54.2 の Swift を読み、checksum（sha256・必須）・SemVer 3要素・
   `setServerBasePath` による全差し替え・ルート直下の `index.html` を確認
-- `tools/live/build.py` が zip と `latest.json` を作ることを確認。
-  **同じ中身なら同じ zip**（時刻と順序を固定してある）
-- `liveInit` を、プラグインを模した相手に対して **10通りの分岐で通した**
+- manifest 方式の解決順（ビルトイン→キャッシュ→取得）と、manifest があれば
+  bundle の checksum が不要なこと、`url` は形式として必須なことを実装で確認
+- `www` の mp3 4本が `ota-builtin-hashes.json` と**一致**し、今日直した
+  `index.html`・`iap.js`・日本語フォントが**不一致**になることを確認
+  （＝仕組みが変わったものだけを見分けられている）
+- `tools/live/build.py` の出力を確認。**配るのは11本2.4MB、mp3は0本**。
+  mp3 を1バイト変えると**書き出しが止まる**ことも確認
+- `liveInit` を、プラグインを模した相手に対して **12通りの分岐で通した**
   （部品なし／ready失敗／CORS／404／壊れた紙／版が古い／checksum無し／取得失敗／
-  成功2通り）。**10/10 で期待どおりの印が出る**
+  manifest方式／manifest空／成功2通り）。**12/12 で期待どおりの印**
+- **build.py が実際に出力した `latest.json` をそのまま**クライアントに食わせ、
+  `download` に manifest 15件が渡り、**mp3 4件の `download_url` が `null`**、
+  checksum は送られず、`next` まで到達することを確認
 - SPM に `CapgoCapacitorUpdater` が入っていること、`autoUpdate:false` であることを確認
 
-**実機でしか分からないもの**：zip の展開と差し替えが本当に起きるか、
+**実機でしか分からないもの**：ビルトインからのコピーが本当に起きるか、
 `next()` の後に再起動で切り替わるか、Firebase Hosting が実際に CORS を返すか。
 → 最初の1回で `live: next 〇〇` が出るかを見る。出れば残りは通っている。
