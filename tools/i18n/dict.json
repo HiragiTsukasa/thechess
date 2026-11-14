@@ -545,6 +545,7 @@
  "横を通ったポーンを取る": "Take the pawn that slipped past",
  "横を通り過ぎた相手のポーンを取れ": "Take the enemy pawn that slipped past you",
  "機種を変えるときは、このコードを控えてください。新しい端末で入れると、レートと表示名が移ります。": "Write this code down before changing devices. Entering it on a new device moves your rating and name across.",
+ "機種変更やアプリを入れ直したときは、ここから戻せます": "New device, or reinstalled the app? Get it back here.",
  "次の上昇まで {0}手": "{0} moves to the next step",
  "次の問題": "Next puzzle",
  "次の問題へ": "Next puzzle",
