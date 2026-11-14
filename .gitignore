@@ -14,3 +14,8 @@ store-screenshots.zip
 iphone-all-sizes.zip
 header.zip
 ipad.zip
+
+# ライブ更新の配信物（tools/live/build.py で作り直せる。
+# Hosting はローカルに無いファイルをサーバーから消すので、
+# 各マシンは自分が作った zip だけ置けばよい）
+firebase/hosting/public/live/

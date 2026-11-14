@@ -3889,26 +3889,48 @@ let nativeVer='';
 (async()=>{try{const A=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App;
   if(A&&A.getInfo){const i=await A.getInfo();if(i&&i.version)nativeVer=i.version+(i.build?' ('+i.build+')':'');}
  }catch(e){}})();
-const appVer=()=>(nativeVer?nativeVer+' / ':'')+APP_VER+' · '+WWW_VER;
+const appVer=()=>(nativeVer?nativeVer+' / ':'')+APP_VER+' · '+WWW_VER
+ +(liveTxt()?'  '+liveTxt():'');
 const LIVE_URL='https://the-chess-33d12.web.app/live/latest.json';
+/* どこで止まったかを実機で読めるようにする。握りつぶすと「届かない」としか分からず、
+   部品が無いのか版の形が悪いのかを切り分けられない。セーブの鍵とは別にする
+   （混ぜると引き継ぎコードに乗って出ていく）。
+   印は ASCII だけ。版の行は等幅フォントで、そこに日本語の字は入っていない */
+const LIVE_KEY='tc_live_v1';
+const liveSt=s=>{try{localStorage.setItem(LIVE_KEY,String(s).slice(0,48));}catch(e){}};
+const liveTxt=()=>{try{return localStorage.getItem(LIVE_KEY)||'';}catch(e){return'';}};
+/* Capacitor.Plugins に並ばないことがあるので registerPlugin でも架ける。
+   架かっても本当に有るとは限らないので、notifyAppReady が通るかで判定する */
+function capUpd(){try{
+  const C=window.Capacitor;if(!C)return null;
+  const p=C.Plugins&&C.Plugins.CapacitorUpdater;if(p)return p;
+  if(typeof C.registerPlugin==='function')return C.registerPlugin('CapacitorUpdater')||null;
+  return null;}catch(e){return null;}}
 function verNewer(a,b){
  const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);
  for(let i=0;i<3;i++){const u=x[i]||0,v=y[i]||0;if(u!==v)return u>v;}
  return false;}
 async function liveInit(){
- const P=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
- if(!P)return;
- try{await P.notifyAppReady();}catch(e){}    /* 呼ばないと前の版へ巻き戻される */
+ const P=capUpd();
+ if(!P){liveSt('live: none');return;}
+ /* 呼ばないと前の版へ巻き戻される。Promise なので try/catch では捕まらない＝ここで待つ */
+ try{await P.notifyAppReady();}catch(e){liveSt('live: none '+((e&&e.message)||e));return;}
+ liveSt('live: checking');
  try{
   const r=await fetch(LIVE_URL+'?t='+Date.now(),{cache:'no-store'});
-  if(r.status>=400)return;
+  if(r.status>=400){liveSt('live: no-json '+r.status);return;}
   const j=await r.json();
-  if(!j||!j.version||!j.url||!verNewer(j.version,APP_VER))return;
-  const o={url:j.url,version:j.version};if(j.checksum)o.checksum=j.checksum;
-  const b=await P.download(o);
-  if(!b||!b.id)return;
-  try{await P.next({id:b.id});}catch(e){}    /* 次の起動から使う。対局中に入れ替えない */
- }catch(e){}
+  if(!j||!j.version||!j.url){liveSt('live: bad-json');return;}
+  if(!verNewer(j.version,APP_VER)){liveSt('live: latest '+APP_VER);return;}
+  /* checksum はプラグイン側で必須。無いまま download を呼ぶと必ず弾かれるので、
+     ここで止めて理由を残す（これが抜けていて一度も届かなかった前例がある） */
+  if(!j.checksum){liveSt('live: no-sum '+j.version);return;}
+  liveSt('live: get '+j.version);
+  const b=await P.download({url:j.url,version:j.version,checksum:j.checksum});
+  if(!b||!b.id){liveSt('live: no-bundle '+j.version);return;}
+  await P.next({id:b.id});                  /* 次の起動から使う。対局中に入れ替えない */
+  liveSt('live: next '+j.version);
+ }catch(e){liveSt('live: x '+((e&&e.message)||e));}
 }
 setTimeout(liveInit,5000);
 for(const ev of ['gesturestart','gesturechange','gestureend'])
