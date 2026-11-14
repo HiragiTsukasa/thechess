@@ -21,6 +21,10 @@ CUBE TACTICS 側の正は `tools/build-live.py`／`docs/native/firebase/README.m
 | 届くまで | 1回目の起動で裏で取り、**閉じて開き直した2回目から**新しい版になる |
 | 失敗したら | 新しい版で起動できなければ、プラグインが自動で前の版へ戻す |
 
+★★**揃って初めて通る3つ**（2026-11-05 に CUBE TACTICS で実機に届くことを確認）：
+**(1) 版が3つ区切りの SemVer**、**(2) `latest.json` に zip の sha256**、
+**(3) 置き場に `Access-Control-Allow-Origin: *`**。**1つでも欠けると黙って何も起きない。**
+
 ★**いちばん大事な前提：部品が「いま配っているストアの版」に入っていないと、一生届かない。**
 あとから入れるには審査が1回要る。**だからチェスでは、次に出す版へ先に入れておく。**
 
@@ -177,6 +181,8 @@ function liveTxt(){ try{ return localStorage.getItem(LIVE_KEY)||''; }catch(e){ r
   "public": "hosting/public",
   "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
   "headers": [
+    { "source": "/live/**",
+      "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }] },
     { "source": "/live/latest.json",
       "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
     { "source": "/live/*.zip",
@@ -184,6 +190,12 @@ function liveTxt(){ try{ return localStorage.getItem(LIVE_KEY)||''; }catch(e){ r
   ]
 }
 ```
+
+★★**`/live/**` に `Access-Control-Allow-Origin: *` が要る**（2026-11-04 に実機で踏んだ・あとから分かった）。
+アプリの中の画面は **`capacitor://localhost` という別のオリジン**なので、この印が無いと
+`latest.json` の取得そのものを**中身を見る前に**弾かれる。実機では `生× TypeError: Load failed`
+（Safari の言い方。Chrome では `Failed to fetch`）。**実測：印の無い状態で別オリジンから取ると必ず `TypeError`。**
+★**印はサーバー側の設定なので、置き直すまで付かない。**
 
 ★**`latest.json` は `no-store`。** でないと CDN が古い紙を返し続ける。
 `.firebaserc` に `{"projects":{"default":"<projectId>"}}`。
@@ -294,7 +306,9 @@ Capgo は落とした zip を**新しい web ルートとして差し替える**
    手で入れた版を起動のたびに戻す
 6. ★**`npm i` はしたが archive の前に `npx cap sync ios` が通っていない。**
    `package.json` には出るのに `Podfile.lock` には無い＝アプリの実体には入っていない
-7. ★**Hosting の権限不足。** Firebase Hosting 管理者だけでは `firebase deploy` が 403
+7. ★★**置き場の CORS 抜け。** `生× TypeError: Load failed` で、`latest.json` の取得そのものが
+   中身を見る前に弾かれていた。**checksum を直したあとも、これでまだ届かなかった**
+8. ★**Hosting の権限不足。** Firebase Hosting 管理者だけでは `firebase deploy` が 403
    （Service Usage）。**編集者（レガシー）**で通った
 
 ---
